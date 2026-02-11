@@ -43,17 +43,18 @@
 	}
 </script>
 
+<div class="grid min-h-screen" style="grid-template: 1fr / 1fr;">
 {#if !store}
-	<div in:fade={{ duration: 350 }}>
+	<div class="col-start-1 row-start-1" in:fade={{ duration: 280, delay: 150 }} out:fade={{ duration: 200 }}>
 		<Dashboard onopen={openReport} />
 	</div>
 {:else}
-	<div class="mx-auto max-w-lg px-4 py-4" in:fly={{ y: 20, duration: 450, easing: cubicOut }}>
+	<div class="col-start-1 row-start-1 mx-auto w-full max-w-lg px-4 py-4" in:fly={{ y: 30, duration: 350, delay: 150, easing: cubicOut }} out:fade={{ duration: 200 }}>
 		<!-- Header with prev/next -->
 		<header class="relative mb-4 flex items-center">
 			<button
 				type="button"
-				class="absolute start-0 rounded-xl p-2 text-gray-400 transition-colors active:bg-surface-700 active:text-white"
+				class="absolute start-0 rounded-xl p-2 text-gray-400 transition-colors hover:bg-surface-700 hover:text-white active:bg-surface-700 active:text-white"
 				title="חזרה לרשימת דוחות"
 				onclick={backToDashboard}
 			>
@@ -101,7 +102,7 @@
 							type="button"
 							class="flex flex-shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-all {i === store.currentStep
 								? 'bg-accent text-white shadow-md shadow-accent/20'
-								: 'bg-surface-700 text-gray-400 active:bg-surface-600 active:text-gray-200'}"
+								: 'bg-surface-700 text-gray-400 hover:bg-surface-600 hover:text-gray-200 active:bg-surface-600 active:text-gray-200'}"
 							onclick={() => handleGoToStep(i)}
 						>
 							<span class="text-base">{stepIcons[i]}</span>
@@ -113,3 +114,4 @@
 		</nav>
 	</div>
 {/if}
+</div>

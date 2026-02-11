@@ -21,7 +21,7 @@
 		</div>
 		<button
 			type="button"
-			class="rounded-xl bg-accent px-3.5 py-2 text-sm font-medium text-white transition-colors active:bg-accent/80"
+			class="rounded-xl bg-accent px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover active:bg-accent/80"
 			onclick={() => store.addDefect()}
 		>
 			+ הוסף ליקוי
@@ -71,7 +71,7 @@
 					<div class="flex gap-1">
 						<button
 							type="button"
-							class="rounded-xl px-2.5 py-1.5 text-xs text-gray-400 transition-colors active:bg-surface-600 active:text-white"
+							class="rounded-xl px-2.5 py-1.5 text-xs text-gray-400 transition-colors hover:bg-surface-600 hover:text-white active:bg-surface-600 active:text-white"
 							title="שכפל ליקוי"
 						onclick={() => { haptic('light'); store.duplicateDefect(idx); }}
 						>
@@ -79,7 +79,7 @@
 						</button>
 						<button
 							type="button"
-							class="rounded-xl px-2.5 py-1.5 text-xs text-gray-400 transition-colors active:bg-danger/20 active:text-danger"
+							class="rounded-xl px-2.5 py-1.5 text-xs text-gray-400 transition-colors hover:bg-danger/20 hover:text-danger active:bg-danger/20 active:text-danger"
 							title="מחק ליקוי"
 						onclick={() => { haptic('warning'); store.removeDefect(idx); }}
 						>

@@ -75,7 +75,7 @@
 			<!-- Inverter header -->
 			<button
 				type="button"
-				class="flex w-full items-center justify-between p-3 text-start transition-colors active:bg-surface-700"
+				class="flex w-full items-center justify-between p-3 text-start transition-colors hover:bg-surface-700 active:bg-surface-700"
 				onclick={() => toggleInverter(config.index)}
 			>
 				<div class="flex items-center gap-2.5">
@@ -138,15 +138,11 @@
 										{@const isParent = hasChildren(measurement.id)}
 										{@const isCollapsed = !!collapsedNodes[measurement.id]}
 										<tr
-											class="border-t border-border/30 {depth % 2 === 0
-												? 'bg-surface-800'
-												: 'bg-surface-800/50'}"
+											class="border-t border-border/30 bg-surface-800"
 										>
 											<!-- Sticky label column with tree controls -->
 											<td
-												class="sticky start-0 z-10 px-2 py-1.5 {depth % 2 === 0
-													? 'bg-surface-800'
-													: 'bg-surface-800/50'}"
+												class="sticky start-0 z-10 bg-surface-800 px-2 py-1.5"
 											>
 												<div
 													class="flex items-center gap-1"
@@ -156,7 +152,7 @@
 													{#if isParent}
 														<button
 															type="button"
-															class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded text-gray-400 active:bg-surface-600"
+															class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-surface-600 active:bg-surface-600"
 															title={isCollapsed ? 'הרחב' : 'כווץ'}
 															onclick={() => toggleNode(measurement.id)}
 														>
@@ -185,17 +181,19 @@
 														{measurement.stringLabel}
 													</span>
 
-													<!-- Add child button -->
-													<button
-														type="button"
-														class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded text-gray-600 transition-colors hover:text-accent active:bg-surface-600"
-														title="הוסף תת-מחרוזת"
-														onclick={() => handleAddChild(measurement.id)}
-													>
-														<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-															<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-														</svg>
-													</button>
+													<!-- Add child button (max 3 nesting levels) -->
+													{#if depth < 2}
+														<button
+															type="button"
+															class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded text-gray-600 transition-colors hover:text-accent active:bg-surface-600"
+															title="הוסף תת-מחרוזת"
+															onclick={() => handleAddChild(measurement.id)}
+														>
+															<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+																<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+															</svg>
+														</button>
+													{/if}
 
 													<!-- Delete button (sub-strings only) -->
 													{#if depth > 0}
@@ -296,7 +294,7 @@
 					<div class="border-t border-border/30 p-2">
 						<button
 							type="button"
-							class="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-sm text-gray-500 transition-colors active:bg-surface-700 active:text-gray-300"
+							class="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-sm text-gray-500 transition-colors hover:bg-surface-700 hover:text-gray-300 active:bg-surface-700 active:text-gray-300"
 							onclick={() => handleAddString(config.index)}
 						>
 							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

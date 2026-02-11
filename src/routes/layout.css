@@ -47,6 +47,15 @@ select {
 	border-color: var(--color-border) !important;
 	color: #e2e8f0 !important;
 	border-radius: 0.5rem;
+	transition: border-color 0.15s ease;
+}
+
+input[type='text']:hover,
+input[type='number']:hover,
+input[type='date']:hover,
+textarea:hover,
+select:hover {
+	border-color: var(--color-border-light) !important;
 }
 
 select {

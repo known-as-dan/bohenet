@@ -32,7 +32,7 @@
 		<div class="overflow-hidden rounded-xl border border-border bg-surface-800">
 			<button
 				type="button"
-				class="flex w-full items-center justify-between p-3 text-start transition-colors active:bg-surface-700"
+				class="flex w-full items-center justify-between p-3 text-start transition-colors hover:bg-surface-700 active:bg-surface-700"
 				onclick={() => toggleSection(sIdx)}
 			>
 				<span class="font-semibold text-white">{section.title}</span>

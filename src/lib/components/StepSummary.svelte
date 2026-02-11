@@ -165,7 +165,7 @@
 	<!-- Export button -->
 	<button
 		type="button"
-		class="w-full rounded-xl px-4 py-3 text-center font-bold text-white shadow-lg transition-all active:scale-[.98] disabled:opacity-50 {exportState === 'success' ? 'bg-ok animate-success-pulse' : exportState === 'error' ? 'bg-danger animate-shake-x' : 'bg-ok/90 active:bg-ok'}"
+		class="w-full rounded-xl px-4 py-3 text-center font-bold text-white shadow-lg transition-all active:scale-[.98] disabled:opacity-50 {exportState === 'success' ? 'bg-ok animate-success-pulse' : exportState === 'error' ? 'bg-danger animate-shake-x' : 'bg-ok/90 hover:bg-ok active:bg-ok'}"
 		onclick={handleExport}
 		disabled={exportState === 'exporting'}
 	>
@@ -184,7 +184,7 @@
 	{#if ondashboard}
 		<button
 			type="button"
-			class="w-full rounded-xl border border-border bg-surface-800 px-4 py-2.5 text-center text-sm text-gray-400 transition-colors active:bg-surface-700 active:text-white"
+			class="w-full rounded-xl border border-border bg-surface-800 px-4 py-2.5 text-center text-sm text-gray-400 transition-colors hover:bg-surface-700 hover:text-white active:bg-surface-700 active:text-white"
 			onclick={ondashboard}
 		>
 			חזרה לרשימת דוחות

@@ -253,6 +253,16 @@ export function createInspectionStore(report: SavedReport) {
 	function addDcSubstring(parentId: string) {
 		const parent = currentReport.inspection.dcMeasurements.find((m) => m.id === parentId);
 		if (!parent) return;
+		// Cap nesting at 3 levels (depth 0 → 1 → 2)
+		let depth = 0;
+		let cur = parent;
+		while (cur.parentId) {
+			depth++;
+			const p = currentReport.inspection.dcMeasurements.find((m) => m.id === cur.parentId);
+			if (!p) break;
+			cur = p;
+		}
+		if (depth >= 2) return;
 		const label = nextChildLabel(
 			currentReport.inspection.dcMeasurements,
 			parentId,

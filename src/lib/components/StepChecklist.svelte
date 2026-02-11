@@ -84,7 +84,7 @@
 			<div class="flex items-center justify-between p-3">
 				<button
 					type="button"
-					class="flex flex-1 items-center gap-2.5 text-start"
+					class="flex flex-1 items-center gap-2.5 rounded-lg text-start transition-colors hover:bg-surface-700"
 					onclick={() => toggleSection(section.code)}
 				>
 					<span class="text-lg">{sectionIcons[section.code] || '📋'}</span>
@@ -157,7 +157,7 @@
 												: opt.style === 'danger'
 													? 'border-danger bg-danger-dim text-danger'
 													: 'border-accent bg-accent-dim text-accent'
-											: 'border-border text-gray-400 active:border-border-light active:text-gray-300'}"
+											: 'border-border text-gray-400 hover:border-border-light hover:text-gray-300 active:border-border-light active:text-gray-300'}"
 									>
 										<input
 											type="radio"

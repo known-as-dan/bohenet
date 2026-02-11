@@ -2,6 +2,8 @@
 	import { fly, slide, fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { haptic } from '$lib/utils/haptics.js';
+	import { downloadWorkbook } from '$lib/mappers/excel.js';
+	import { checklistSections } from '$lib/config/checklist.js';
 	import { browser } from '$app/environment';
 	import {
 		listReports,
@@ -64,6 +66,40 @@
 		refresh();
 	}
 
+	let exportingId = $state<string | null>(null);
+
+	async function handleExport(id: string) {
+		if (exportingId) return;
+		exportingId = id;
+		haptic('medium');
+		try {
+			const report = loadReport(id);
+			if (!report) return;
+			const inspection = report.inspection;
+			// Compute allDefects the same way the store does
+			const autoDefects = inspection.checklist
+				.filter((c) => c.status === 'לא תקין')
+				.map((c) => {
+					const parentCode = c.sectionCode.split('.')[0];
+					const component = checklistSections.find((s) => s.code === parentCode)?.title ?? '';
+					return {
+						component,
+						fault: c.description,
+						location: `סעיף ${c.sectionCode}`,
+						status: c.notes || ''
+					};
+				});
+			const allDefects = [...autoDefects, ...inspection.defects];
+			await downloadWorkbook(inspection, allDefects);
+			haptic('success');
+		} catch (err) {
+			console.error('Export failed:', err);
+			haptic('error');
+		} finally {
+			exportingId = null;
+		}
+	}
+
 	function handleAddFolder() {
 		const name = newFolderName.trim();
 		if (name && !folders.includes(name)) {
@@ -124,7 +160,7 @@
 	<!-- New Report Button -->
 	<button
 		type="button"
-		class="mb-6 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-white shadow-md shadow-accent/15 transition-all hover:bg-accent-hover active:scale-[0.98]"
+		class="mb-6 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-white shadow-md shadow-accent/15 transition-all hover:bg-accent-hover hover:shadow-lg hover:shadow-accent/25 active:scale-[0.98]"
 		onclick={handleNew}
 	>
 		<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -138,7 +174,7 @@
 		<div class="mb-2 flex flex-wrap gap-1.5">
 			<button
 				type="button"
-				class="rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors {activeFolder === null ? 'bg-accent text-white' : 'bg-surface-800 text-gray-400 active:bg-surface-700'}"
+				class="rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors {activeFolder === null ? 'bg-accent text-white' : 'bg-surface-800 text-gray-400 hover:bg-surface-700 hover:text-gray-300 active:bg-surface-700'}"
 				onclick={() => (activeFolder = null)}
 			>
 				הכל ({reports.length})
@@ -149,7 +185,7 @@
 				{@const isDefault = folder === 'כללי'}
 				<button
 					type="button"
-					class="flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors {isActive ? 'bg-accent text-white' : 'bg-surface-800 text-gray-400 active:bg-surface-700'}"
+					class="flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors {isActive ? 'bg-accent text-white' : 'bg-surface-800 text-gray-400 hover:bg-surface-700 hover:text-gray-300 active:bg-surface-700'}"
 					onclick={() => (activeFolder = isActive ? null : folder)}
 				>
 					<svg class="h-3.5 w-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -172,7 +208,7 @@
 			{/each}
 			<button
 				type="button"
-				class="rounded-lg bg-surface-800 px-3.5 py-1.5 text-sm text-gray-500 active:bg-surface-700"
+				class="rounded-lg bg-surface-800 px-3.5 py-1.5 text-sm text-gray-500 transition-colors hover:bg-surface-700 hover:text-gray-400 active:bg-surface-700"
 				onclick={() => (showNewFolder = !showNewFolder)}
 			>
 				+ תיקייה
@@ -190,7 +226,7 @@
 				/>
 				<button
 					type="button"
-					class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white active:bg-accent/80"
+					class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover active:bg-accent/80"
 					onclick={handleAddFolder}
 				>
 					צור
@@ -202,7 +238,15 @@
 	<!-- Reports List -->
 	{#if filteredReports.length === 0}
 		<div class="py-16 text-center" in:fade={{ duration: 400 }}>
-			<img src="/logo.svg" alt="" class="mx-auto mb-4 h-20 w-20 opacity-20" />
+			<svg class="mx-auto mb-4 h-20 w-20 text-surface-500" viewBox="0 0 80 80" fill="none">
+				<!-- Dashed clipboard outline -->
+				<rect x="16" y="12" width="48" height="58" rx="6" stroke="currentColor" stroke-width="2" stroke-dasharray="5 3" opacity="0.5" />
+				<!-- Clip -->
+				<rect x="28" y="7" width="24" height="10" rx="3" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3" opacity="0.5" />
+				<!-- Plus sign -->
+				<line x1="40" y1="32" x2="40" y2="56" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.4" />
+				<line x1="28" y1="44" x2="52" y2="44" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.4" />
+			</svg>
 			<p class="text-gray-400">
 				{activeFolder ? 'אין דוחות בתיקייה זו' : 'אין דוחות עדיין'}
 			</p>
@@ -212,7 +256,7 @@
 		<div class="space-y-2.5">
 			{#each filteredReports as report, i (report.id)}
 				<div
-					class="cursor-pointer rounded-xl border border-border/60 bg-surface-800 p-3.5 transition-all active:border-border-light active:bg-surface-700"
+					class="cursor-pointer rounded-xl border border-border/60 bg-surface-800 p-3.5 transition-all hover:border-border-light hover:bg-surface-700 active:border-border-light active:bg-surface-700"
 					in:fly|global={{ y: 12, duration: 350, delay: Math.min(i * 50, 250), easing: cubicOut }}
 					role="button"
 					tabindex="0"
@@ -229,7 +273,25 @@
 						<div class="flex gap-0.5">
 							<button
 								type="button"
-								class="rounded-lg p-1.5 text-gray-500 transition-colors active:bg-surface-600 active:text-gray-300"
+								class="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-ok-dim hover:text-ok active:bg-ok-dim active:text-ok disabled:opacity-40"
+								title="ייצוא לאקסל"
+								disabled={exportingId === report.id}
+								onclick={(e) => { e.stopPropagation(); handleExport(report.id); }}
+							>
+								{#if exportingId === report.id}
+									<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+										<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+									</svg>
+								{:else}
+									<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+									</svg>
+								{/if}
+							</button>
+							<button
+								type="button"
+								class="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-surface-600 hover:text-gray-300 active:bg-surface-600 active:text-gray-300"
 								title="שכפל"
 								onclick={(e) => { e.stopPropagation(); handleDuplicate(report.id); }}
 							>
@@ -239,7 +301,7 @@
 							</button>
 							<button
 								type="button"
-								class="rounded-lg p-1.5 text-gray-500 transition-colors active:bg-danger-dim active:text-danger"
+								class="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-danger-dim hover:text-danger active:bg-danger-dim active:text-danger"
 								title="מחק"
 								onclick={(e) => { e.stopPropagation(); handleDelete(report.id); }}
 							>
