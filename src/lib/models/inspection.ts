@@ -1,4 +1,4 @@
-export type ChecklistStatus = 'תקין' | 'לא תקין' | '-' | '*' | 'ללא';
+export type ChecklistStatus = 'תקין' | 'לא תקין' | 'ל.ק.' | '*' | 'ללא';
 
 export type InspectionMeta = {
 	siteName: string;

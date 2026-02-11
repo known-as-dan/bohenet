@@ -13,10 +13,42 @@
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link href="https://fonts.googleapis.com/css2?family=Arimo:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
 		<title>בוחנת</title>
-		%sveltekit.head%
+		
+		<link rel="modulepreload" href="/_app/immutable/entry/start.CAkP7k9Q.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/DBx8Sjf-.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/D3-y4Pvy.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/B6Yl_JU-.js">
+		<link rel="modulepreload" href="/_app/immutable/entry/app.oRe4dq43.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/CUih7PUS.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/BRyx5Gv6.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/Cx6GvXss.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/CXhx8dUQ.js">
 	</head>
 	<body data-sveltekit-preload-data="hover" style="background-color: #0f1117; touch-action: manipulation;">
-		<div style="display: contents">%sveltekit.body%</div>
+		<div style="display: contents">
+			<script>
+				{
+					__sveltekit_jcqwnm = {
+						base: ""
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("/_app/immutable/entry/start.CAkP7k9Q.js"),
+						import("/_app/immutable/entry/app.oRe4dq43.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element);
+					});
+
+					if ('serviceWorker' in navigator) {
+						addEventListener('load', function () {
+							navigator.serviceWorker.register('/service-worker.js');
+						});
+					}
+				}
+			</script>
+		</div>
 		<script>
 			// Prevent pinch-to-zoom
 			document.addEventListener('gesturestart', function(e) { e.preventDefault(); });

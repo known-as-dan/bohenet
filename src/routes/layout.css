@@ -1,3 +1,127 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
+
+@theme {
+	--color-surface-900: #0f1117;
+	--color-surface-800: #161822;
+	--color-surface-700: #1e2130;
+	--color-surface-600: #272b3d;
+	--color-surface-500: #353a50;
+	--color-surface-400: #4a5068;
+	--color-border: #2d3348;
+	--color-border-light: #3a4160;
+	--color-accent: #6c8cff;
+	--color-accent-hover: #8aa4ff;
+	--color-accent-dim: #3d4f8a;
+	--color-ok: #4ade80;
+	--color-ok-dim: #1a3a2a;
+	--color-warn: #fbbf24;
+	--color-warn-dim: #3a3020;
+	--color-danger: #f87171;
+	--color-danger-dim: #3a1a1a;
+}
+
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-surface-500) transparent;
+}
+
+body {
+	background-color: var(--color-surface-900);
+	color: #e2e8f0;
+	font-family:
+		'Arimo',
+		-apple-system,
+		BlinkMacSystemFont,
+		sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+
+input[type='text'],
+input[type='number'],
+input[type='date'],
+textarea,
+select {
+	background-color: var(--color-surface-700) !important;
+	border-color: var(--color-border) !important;
+	color: #e2e8f0 !important;
+	border-radius: 0.5rem;
+}
+
+select {
+	background-position: left 0.5rem center;
+}
+
+textarea {
+	resize: none;
+}
+
+input[type='text']:focus,
+input[type='number']:focus,
+input[type='date']:focus,
+textarea:focus,
+select:focus {
+	border-color: var(--color-accent) !important;
+	box-shadow: 0 0 0 2px rgba(108, 140, 255, 0.25) !important;
+	outline: none;
+}
+
+input[type='text']::placeholder,
+input[type='number']::placeholder,
+textarea::placeholder {
+	color: #5a6178 !important;
+}
+
+input[type='date']::-webkit-calendar-picker-indicator {
+	filter: invert(0.7);
+}
+
+select option {
+	background-color: var(--color-surface-700);
+	color: #e2e8f0;
+}
+
+/* ---- Animation keyframes ---- */
+
+@keyframes success-pulse {
+	0% {
+		box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5);
+	}
+	100% {
+		box-shadow: 0 0 0 12px rgba(74, 222, 128, 0);
+	}
+}
+
+@keyframes shake-x {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	20% {
+		transform: translateX(-3px);
+	}
+	40% {
+		transform: translateX(3px);
+	}
+	60% {
+		transform: translateX(-2px);
+	}
+	80% {
+		transform: translateX(2px);
+	}
+}
+
+.animate-success-pulse {
+	animation: success-pulse 0.7s ease-out;
+}
+.animate-shake-x {
+	animation: shake-x 0.55s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.animate-success-pulse,
+	.animate-shake-x {
+		animation: none;
+	}
+}

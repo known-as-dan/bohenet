@@ -6,7 +6,6 @@ node_modules
 .netlify
 .wrangler
 /.svelte-kit
-/build
 
 # OS
 .DS_Store
@@ -23,3 +22,8 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 # Playwright
 test-results
+
+# Source xlsx files (keep static/template.xlsx)
+*.xlsx
+!static/template.xlsx
+!docs/template.xlsx

@@ -1,44 +1,37 @@
-import { createChecklistFromTemplate } from '../config/checklist.js';
+import { createChecklistFromTemplate, checklistSections } from '../config/checklist.js';
 import { createAcMeasurementsFromTemplate } from '../config/ac.js';
 import type {
-	Inspection,
 	InspectionMeta,
 	InverterConfig,
 	DcStringMeasurement,
-	InverterSerial,
 	Defect
 } from '../models/inspection.js';
-import { createDefaultMeta } from '../models/inspection.js';
+import type { SavedReport } from './reports.js';
+import { saveReport } from './reports.js';
 
-const STORAGE_KEY = 'bohenet_inspection';
+/** Map a checklist sectionCode like "1.5" to its parent section title */
+function getSectionTitle(sectionCode: string): string {
+	const parentCode = sectionCode.split('.')[0];
+	return checklistSections.find((s) => s.code === parentCode)?.title ?? '';
+}
+
+/** Shorten a verbose checklist description into a compact fault label */
+function shortenFault(desc: string): string {
+	// Strip leading imperative verbs
+	let s = desc
+		.replace(/^(ודא|בדוק|בצע|ציין|חזק|מדוד)\s+(את\s+|כי\s+|על\s+)?/i, '')
+		.replace(/^(המצאות ו)/, '');
+	// Take only the first sentence/clause
+	s = s.split(/[.;]/, 1)[0].split(' - ', 1)[0];
+	// Trim and cap length
+	s = s.trim();
+	if (s.length > 60) s = s.slice(0, 57) + '...';
+	// Capitalize first char (for Hebrew it's a no-op but just in case)
+	return s;
+}
+
 const INSPECTOR_KEY = 'bohenet_inspector';
 const STRING_LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-
-function loadFromStorage(): Inspection | null {
-	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
-		if (raw) return JSON.parse(raw);
-	} catch {
-		/* ignore */
-	}
-	return null;
-}
-
-function saveToStorage(inspection: Inspection) {
-	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(inspection));
-	} catch {
-		/* ignore */
-	}
-}
-
-function loadInspectorName(): string {
-	try {
-		return localStorage.getItem(INSPECTOR_KEY) ?? '';
-	} catch {
-		return '';
-	}
-}
 
 function saveInspectorName(name: string) {
 	try {
@@ -63,30 +56,40 @@ function generateDcMeasurements(configs: InverterConfig[]): DcStringMeasurement[
 	);
 }
 
-function generateInverterSerials(configs: InverterConfig[]): InverterSerial[] {
+function generateInverterSerials(configs: InverterConfig[]) {
 	return configs.map((inv) => ({
 		inverterIndex: inv.index,
 		serialNumber: ''
 	}));
 }
 
-export function createInspectionStore() {
-	const saved = loadFromStorage();
+export function createInspectionStore(report: SavedReport) {
+	let currentReport = $state<SavedReport>(report);
 
-	let inspection = $state<Inspection>(
-		saved ?? {
-			meta: {
-				...createDefaultMeta(),
-				inspectorName: loadInspectorName()
-			},
-			inverterConfigs: [],
-			checklist: createChecklistFromTemplate(),
-			dcMeasurements: [],
-			acMeasurements: createAcMeasurementsFromTemplate(),
-			inverterSerials: [],
-			defects: []
+	// Initialize checklist/AC if empty (new report), or sync with template
+	if (currentReport.inspection.checklist.length === 0) {
+		currentReport.inspection.checklist = createChecklistFromTemplate();
+	} else {
+		// Ensure any new template items are added to existing reports
+		const template = createChecklistFromTemplate();
+		const existing = new Set(currentReport.inspection.checklist.map((c) => c.sectionCode));
+		for (const item of template) {
+			if (!existing.has(item.sectionCode)) {
+				currentReport.inspection.checklist.push(item);
+			}
 		}
-	);
+	}
+	if (currentReport.inspection.acMeasurements.length === 0) {
+		currentReport.inspection.acMeasurements = createAcMeasurementsFromTemplate();
+	} else {
+		const template = createAcMeasurementsFromTemplate();
+		const existing = new Set(currentReport.inspection.acMeasurements.map((a) => a.itemCode));
+		for (const item of template) {
+			if (!existing.has(item.itemCode)) {
+				currentReport.inspection.acMeasurements.push(item);
+			}
+		}
+	}
 
 	let currentStep = $state(0);
 
@@ -101,42 +104,54 @@ export function createInspectionStore() {
 	];
 
 	function save() {
-		saveToStorage(inspection);
-		if (inspection.meta.inspectorName) {
-			saveInspectorName(inspection.meta.inspectorName);
+		saveReport(currentReport);
+		if (currentReport.inspection.meta.inspectorName) {
+			saveInspectorName(currentReport.inspection.meta.inspectorName);
 		}
 	}
 
+	function updateReportName(name: string) {
+		currentReport.name = name;
+		save();
+	}
+
 	function updateMeta(meta: Partial<InspectionMeta>) {
-		inspection.meta = { ...inspection.meta, ...meta };
+		currentReport.inspection.meta = { ...currentReport.inspection.meta, ...meta };
+		if (meta.siteName && (currentReport.name === 'בדיקה חדשה' || !currentReport.name)) {
+			currentReport.name = meta.siteName;
+		}
 		save();
 	}
 
 	function setInverterConfigs(count: number, defaultStrings = 9) {
-		const existing = inspection.inverterConfigs;
+		const existing = currentReport.inspection.inverterConfigs;
 		const configs: InverterConfig[] = Array.from({ length: count }, (_, i) => ({
 			index: i + 1,
 			label: existing[i]?.label ?? `ממיר ${i + 1}`,
 			stringCount: existing[i]?.stringCount ?? defaultStrings
 		}));
-		inspection.inverterConfigs = configs;
-		inspection.dcMeasurements = generateDcMeasurements(configs);
-		inspection.inverterSerials = generateInverterSerials(configs);
+		currentReport.inspection.inverterConfigs = configs;
+		currentReport.inspection.dcMeasurements = generateDcMeasurements(configs);
+		currentReport.inspection.inverterSerials = generateInverterSerials(configs);
 		save();
 	}
 
 	function updateInverterConfig(index: number, updates: Partial<InverterConfig>) {
-		const config = inspection.inverterConfigs.find((c) => c.index === index);
+		const config = currentReport.inspection.inverterConfigs.find((c) => c.index === index);
 		if (config) {
 			Object.assign(config, updates);
-			inspection.dcMeasurements = generateDcMeasurements(inspection.inverterConfigs);
-			inspection.inverterSerials = generateInverterSerials(inspection.inverterConfigs);
+			currentReport.inspection.dcMeasurements = generateDcMeasurements(
+				currentReport.inspection.inverterConfigs
+			);
+			currentReport.inspection.inverterSerials = generateInverterSerials(
+				currentReport.inspection.inverterConfigs
+			);
 			save();
 		}
 	}
 
 	function updateChecklistItem(sectionCode: string, status?: string, notes?: string) {
-		const item = inspection.checklist.find((c) => c.sectionCode === sectionCode);
+		const item = currentReport.inspection.checklist.find((c) => c.sectionCode === sectionCode);
 		if (item) {
 			if (status !== undefined) item.status = status as typeof item.status;
 			if (notes !== undefined) item.notes = notes;
@@ -145,7 +160,7 @@ export function createInspectionStore() {
 	}
 
 	function markSectionAllOk(sectionCode: string) {
-		inspection.checklist
+		currentReport.inspection.checklist
 			.filter((c) => c.sectionCode.startsWith(sectionCode + '.'))
 			.forEach((c) => {
 				if (!c.status) c.status = 'תקין';
@@ -158,7 +173,7 @@ export function createInspectionStore() {
 		stringLabel: string,
 		updates: Partial<DcStringMeasurement>
 	) {
-		const m = inspection.dcMeasurements.find(
+		const m = currentReport.inspection.dcMeasurements.find(
 			(d) => d.inverterIndex === inverterIndex && d.stringLabel === stringLabel
 		);
 		if (m) {
@@ -168,7 +183,7 @@ export function createInspectionStore() {
 	}
 
 	function updateAcMeasurement(itemCode: string, result?: string | number, notes?: string) {
-		const m = inspection.acMeasurements.find((a) => a.itemCode === itemCode);
+		const m = currentReport.inspection.acMeasurements.find((a) => a.itemCode === itemCode);
 		if (m) {
 			if (result !== undefined) m.result = result;
 			if (notes !== undefined) m.notes = notes;
@@ -177,7 +192,9 @@ export function createInspectionStore() {
 	}
 
 	function updateInverterSerial(inverterIndex: number, serialNumber: string) {
-		const s = inspection.inverterSerials.find((i) => i.inverterIndex === inverterIndex);
+		const s = currentReport.inspection.inverterSerials.find(
+			(i) => i.inverterIndex === inverterIndex
+		);
 		if (s) {
 			s.serialNumber = serialNumber;
 			save();
@@ -185,7 +202,7 @@ export function createInspectionStore() {
 	}
 
 	function addDefect(defect?: Partial<Defect>) {
-		inspection.defects.push({
+		currentReport.inspection.defects.push({
 			component: defect?.component ?? '',
 			fault: defect?.fault ?? '',
 			location: defect?.location ?? '',
@@ -195,33 +212,16 @@ export function createInspectionStore() {
 	}
 
 	function removeDefect(index: number) {
-		inspection.defects.splice(index, 1);
+		currentReport.inspection.defects.splice(index, 1);
 		save();
 	}
 
 	function duplicateDefect(index: number) {
-		const d = inspection.defects[index];
+		const d = currentReport.inspection.defects[index];
 		if (d) {
-			inspection.defects.splice(index + 1, 0, { ...d });
+			currentReport.inspection.defects.splice(index + 1, 0, { ...d });
 			save();
 		}
-	}
-
-	function resetInspection() {
-		inspection = {
-			meta: {
-				...createDefaultMeta(),
-				inspectorName: loadInspectorName()
-			},
-			inverterConfigs: [],
-			checklist: createChecklistFromTemplate(),
-			dcMeasurements: [],
-			acMeasurements: createAcMeasurementsFromTemplate(),
-			inverterSerials: [],
-			defects: []
-		};
-		currentStep = 0;
-		save();
 	}
 
 	function goToStep(step: number) {
@@ -238,9 +238,29 @@ export function createInspectionStore() {
 		goToStep(currentStep - 1);
 	}
 
+	let autoDefects = $derived(
+		currentReport.inspection.checklist
+			.filter((c) => c.status === 'לא תקין')
+			.map((c) => ({
+				sectionCode: c.sectionCode,
+				component: getSectionTitle(c.sectionCode),
+				fault: shortenFault(c.description),
+				location: `סעיף ${c.sectionCode}`,
+				status: c.notes || ''
+			}))
+	);
+
+	let allDefects = $derived([
+		...autoDefects,
+		...currentReport.inspection.defects
+	]);
+
 	return {
 		get inspection() {
-			return inspection;
+			return currentReport.inspection;
+		},
+		get report() {
+			return currentReport;
 		},
 		get currentStep() {
 			return currentStep;
@@ -248,7 +268,14 @@ export function createInspectionStore() {
 		get steps() {
 			return steps;
 		},
+		get autoDefects() {
+			return autoDefects;
+		},
+		get allDefects() {
+			return allDefects;
+		},
 		save,
+		updateReportName,
 		updateMeta,
 		setInverterConfigs,
 		updateInverterConfig,
@@ -260,7 +287,6 @@ export function createInspectionStore() {
 		addDefect,
 		removeDefect,
 		duplicateDefect,
-		resetInspection,
 		goToStep,
 		nextStep,
 		prevStep

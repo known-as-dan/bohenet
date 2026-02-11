@@ -1,110 +1,146 @@
 <script lang="ts">
-	import type { createInspectionStore } from '$lib/stores/inspection.svelte.js';
+	import { fly } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
+	import { haptic } from '$lib/utils/haptics.js';
 	import { defectComponentOptions } from '$lib/config/ac.js';
+	import type { createInspectionStore } from '$lib/stores/inspection.svelte.js';
 
 	let { store }: { store: ReturnType<typeof createInspectionStore> } = $props();
+
+	function updateField(idx: number, field: keyof (typeof store.inspection.defects)[0], value: string) {
+		store.inspection.defects[idx][field] = value;
+		store.save();
+	}
 </script>
 
 <div class="space-y-4">
 	<div class="flex items-center justify-between">
-		<h2 class="text-xl font-bold">ריכוז ליקויים</h2>
+		<div>
+			<h2 class="text-lg font-bold text-white">ריכוז ליקויים</h2>
+			<p class="text-sm text-gray-400">תיעוד ליקויים שנמצאו בבדיקה</p>
+		</div>
 		<button
 			type="button"
-			class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+			class="rounded-xl bg-accent px-3.5 py-2 text-sm font-medium text-white transition-colors active:bg-accent/80"
 			onclick={() => store.addDefect()}
 		>
 			+ הוסף ליקוי
 		</button>
 	</div>
 
-	{#if store.inspection.defects.length === 0}
-		<p class="py-8 text-center text-gray-500">לא נרשמו ליקויים. לחץ "הוסף ליקוי" להוספת רשומה.</p>
+	<!-- Auto-populated defects from checklist -->
+	{#if store.autoDefects.length > 0}
+		<div class="space-y-2">
+			<div class="flex items-center gap-2">
+				<span class="text-sm font-semibold text-warn">⚠️ ליקויים מהבדיקות החזותיות</span>
+				<span class="rounded-full bg-warn-dim px-2 py-0.5 text-xs font-medium text-warn">{store.autoDefects.length}</span>
+			</div>
+			{#each store.autoDefects as defect, idx (defect.location + defect.fault)}
+				<div class="rounded-xl border border-warn/20 bg-warn-dim/30 p-3">
+					<div class="mb-1 flex items-start justify-between gap-2">
+						<span class="text-sm font-semibold text-warn">{defect.component}</span>
+						<span class="shrink-0 rounded bg-surface-600 px-1.5 py-0.5 text-xs text-gray-400">{defect.location}</span>
+					</div>
+					<p class="text-sm text-gray-300">{defect.fault}</p>
+					<div class="mt-2">
+						<input
+							type="text"
+							class="w-full border-none bg-surface-700 px-2.5 py-1.5 text-sm"
+							placeholder="הערות..."
+							value={defect.status}
+							oninput={(e) => store.updateChecklistItem(defect.sectionCode, undefined, e.currentTarget.value)}
+						/>
+					</div>
+				</div>
+			{/each}
+		</div>
 	{/if}
 
-	{#each store.inspection.defects as defect, i (i)}
-		<div class="space-y-3 rounded-lg border border-gray-200 p-4">
-			<div class="flex items-center justify-between">
-				<span class="text-sm font-medium text-gray-500">ליקוי #{i + 1}</span>
-				<div class="flex gap-2">
-					<button
-						type="button"
-						class="rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
-						onclick={() => store.duplicateDefect(i)}
-					>
-						שכפל
-					</button>
-					<button
-						type="button"
-						class="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-						onclick={() => store.removeDefect(i)}
-					>
-						מחק
-					</button>
+	<!-- Manual defects -->
+	{#if store.inspection.defects.length === 0 && store.autoDefects.length === 0}
+		<div class="rounded-xl border border-border/50 bg-surface-800 py-12 text-center">
+			<div class="mb-3 text-4xl opacity-30">✓</div>
+			<p class="text-gray-400">לא נמצאו ליקויים</p>
+			<p class="mt-1 text-sm text-gray-500">לחץ "הוסף ליקוי" לתעד ליקוי חדש</p>
+		</div>
+	{:else}
+		{#each store.inspection.defects as defect, idx (idx)}
+			<div class="overflow-hidden rounded-xl border border-border bg-surface-800" in:fly={{ y: -20, duration: 400, easing: cubicOut }}>
+				<div class="flex items-center justify-between bg-surface-700 px-3 py-2">
+					<span class="text-sm font-semibold text-white">ליקוי #{idx + 1}</span>
+					<div class="flex gap-1">
+						<button
+							type="button"
+							class="rounded-xl px-2.5 py-1.5 text-xs text-gray-400 transition-colors active:bg-surface-600 active:text-white"
+							title="שכפל ליקוי"
+						onclick={() => { haptic('light'); store.duplicateDefect(idx); }}
+						>
+							📋
+						</button>
+						<button
+							type="button"
+							class="rounded-xl px-2.5 py-1.5 text-xs text-gray-400 transition-colors active:bg-danger/20 active:text-danger"
+							title="מחק ליקוי"
+						onclick={() => { haptic('warning'); store.removeDefect(idx); }}
+						>
+							🗑
+						</button>
+					</div>
+				</div>
+
+				<div class="space-y-3 p-3">
+					<div>
+						<label for="defect-component-{idx}" class="mb-1 block text-sm font-medium text-gray-300">רכיב</label>
+						<select
+							id="defect-component-{idx}"
+							class="w-full border-none bg-surface-700 px-2.5 py-1.5 text-sm"
+							value={defect.component}
+							onchange={(e) => updateField(idx, 'component', e.currentTarget.value)}
+						>
+							<option value="">בחר רכיב...</option>
+							{#each defectComponentOptions as opt}
+								<option value={opt}>{opt}</option>
+							{/each}
+						</select>
+					</div>
+
+					<div>
+						<label for="defect-fault-{idx}" class="mb-1 block text-sm font-medium text-gray-300">תיאור תקלה</label>
+						<textarea
+							id="defect-fault-{idx}"
+							class="w-full border-none bg-surface-700 px-2.5 py-1.5 text-sm"
+							rows={2}
+							placeholder="תיאור מפורט של התקלה..."
+							value={defect.fault}
+							oninput={(e) => updateField(idx, 'fault', e.currentTarget.value)}
+						></textarea>
+					</div>
+
+					<div>
+						<label for="defect-location-{idx}" class="mb-1 block text-sm font-medium text-gray-300">מיקום</label>
+						<input
+							id="defect-location-{idx}"
+							type="text"
+							class="w-full border-none bg-surface-700 px-2.5 py-1.5 text-sm"
+							placeholder="מיקום הליקוי..."
+							value={defect.location}
+							oninput={(e) => updateField(idx, 'location', e.currentTarget.value)}
+						/>
+					</div>
+
+					<div>
+						<label for="defect-status-{idx}" class="mb-1 block text-sm font-medium text-gray-300">סטטוס / הערות</label>
+						<textarea
+							id="defect-status-{idx}"
+							class="w-full border-none bg-surface-700 px-2.5 py-1.5 text-sm"
+							rows={2}
+							placeholder="סטטוס טיפול, הערות..."
+							value={defect.status}
+							oninput={(e) => updateField(idx, 'status', e.currentTarget.value)}
+						></textarea>
+					</div>
 				</div>
 			</div>
-
-			<div>
-				<label for="defect-comp-{i}" class="mb-1 block text-sm">רכיב</label>
-				<select
-					id="defect-comp-{i}"
-					class="block w-full rounded border-gray-300 text-sm shadow-sm"
-					value={defect.component}
-					onchange={(e) => {
-						defect.component = e.currentTarget.value;
-						store.save();
-					}}
-				>
-					<option value="">בחר רכיב...</option>
-					{#each defectComponentOptions as opt}
-						<option value={opt}>{opt}</option>
-					{/each}
-				</select>
-			</div>
-
-			<div>
-				<label for="defect-fault-{i}" class="mb-1 block text-sm">תקלה</label>
-				<textarea
-					id="defect-fault-{i}"
-					class="block w-full rounded border-gray-300 text-sm shadow-sm"
-					rows="2"
-					placeholder="תאר את התקלה..."
-					value={defect.fault}
-					oninput={(e) => {
-						defect.fault = e.currentTarget.value;
-						store.save();
-					}}
-				></textarea>
-			</div>
-
-			<div>
-				<label for="defect-loc-{i}" class="mb-1 block text-sm">מיקום במערכת</label>
-				<input
-					id="defect-loc-{i}"
-					type="text"
-					class="block w-full rounded border-gray-300 text-sm shadow-sm"
-					placeholder="מיקום..."
-					value={defect.location}
-					oninput={(e) => {
-						defect.location = e.currentTarget.value;
-						store.save();
-					}}
-				/>
-			</div>
-
-			<div>
-				<label for="defect-status-{i}" class="mb-1 block text-sm">סטטוס</label>
-				<textarea
-					id="defect-status-{i}"
-					class="block w-full rounded border-gray-300 text-sm shadow-sm"
-					rows="2"
-					placeholder="מה נעשה / נדרש..."
-					value={defect.status}
-					oninput={(e) => {
-						defect.status = e.currentTarget.value;
-						store.save();
-					}}
-				></textarea>
-			</div>
-		</div>
-	{/each}
+		{/each}
+	{/if}
 </div>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { slide } from 'svelte/transition';
+	import { haptic } from '$lib/utils/haptics.js';
 	import type { createInspectionStore } from '$lib/stores/inspection.svelte.js';
 	import { checklistSections } from '$lib/config/checklist.js';
 
@@ -9,12 +11,19 @@
 	);
 
 	function toggleSection(code: string) {
+		haptic('light');
 		expandedSections[code] = !expandedSections[code];
 	}
 
 	function getFilledCount(sectionCode: string): number {
 		return store.inspection.checklist.filter(
 			(c) => c.sectionCode.startsWith(sectionCode + '.') && c.status
+		).length;
+	}
+
+	function getFaultCount(sectionCode: string): number {
+		return store.inspection.checklist.filter(
+			(c) => c.sectionCode.startsWith(sectionCode + '.') && c.status === 'לא תקין'
 		).length;
 	}
 
@@ -25,84 +34,152 @@
 	}
 
 	let totalFilled = $derived(store.inspection.checklist.filter((c) => c.status).length);
+	let totalFaults = $derived(store.inspection.checklist.filter((c) => c.status === 'לא תקין').length);
 	let totalItems = $derived(store.inspection.checklist.length);
+
+	const sectionIcons: Record<string, string> = {
+		'1': '🔆',
+		'2': '🏗️',
+		'3': '🔌',
+		'4': '⚡',
+		'5': '📦',
+		'6': '🔗',
+		'7': '🛡️',
+		'8': '📡',
+		'9': '🔍'
+	};
 </script>
 
 <div class="space-y-4">
 	<div class="flex items-center justify-between">
-		<h2 class="text-xl font-bold">בדיקות חזותיות</h2>
-		<span class="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
-			{totalFilled}/{totalItems}
-		</span>
+		<div>
+			<h2 class="text-lg font-bold text-white">בדיקות חזותיות</h2>
+			<p class="text-sm text-gray-400">סקירת תקינות רכיבי המערכת</p>
+		</div>
+		<div class="flex items-center gap-2">
+			{#if totalFaults > 0}
+				<div class="flex items-center gap-1.5 rounded-full bg-danger-dim px-3 py-1.5 text-sm font-semibold text-danger">
+					<div class="h-2 w-2 rounded-full bg-danger"></div>
+					{totalFaults} תקלות
+				</div>
+			{/if}
+			<div
+				class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold {totalFilled === totalItems && totalFaults === 0 ? 'bg-ok-dim text-ok' : totalFilled === totalItems ? 'bg-warn-dim text-warn' : 'bg-accent-dim text-accent'}"
+			>
+				<div
+					class="h-2 w-2 rounded-full {totalFilled === totalItems && totalFaults === 0 ? 'bg-ok' : totalFilled === totalItems ? 'bg-warn' : 'bg-accent'}"
+				></div>
+				{totalFilled}/{totalItems}
+			</div>
+		</div>
 	</div>
 
 	{#each checklistSections as section (section.code)}
 		{@const filled = getFilledCount(section.code)}
+		{@const faults = getFaultCount(section.code)}
 		{@const total = getTotalCount(section.code)}
-		<div class="overflow-hidden rounded-lg border border-gray-200">
-			<div class="flex w-full items-center justify-between bg-gray-50 p-3">
+		{@const complete = filled === total}
+		{@const allOk = complete && faults === 0}
+		<div class="overflow-hidden rounded-xl border {faults > 0 ? 'border-danger/30' : 'border-border'} bg-surface-800">
+			<div class="flex items-center justify-between p-3">
 				<button
 					type="button"
-					class="flex items-center gap-2 text-start"
+					class="flex flex-1 items-center gap-2.5 text-start"
 					onclick={() => toggleSection(section.code)}
 				>
-					<span class="text-lg">{expandedSections[section.code] ? '▾' : '▸'}</span>
-					<span class="font-semibold">{section.code}. {section.title}</span>
+					<span class="text-lg">{sectionIcons[section.code] || '📋'}</span>
+					<div>
+						<span class="font-semibold text-white"
+							>{section.code}. {section.title}</span
+						>
+						<div class="mt-0.5 flex h-1 w-20 overflow-hidden rounded-full bg-surface-600">
+							{#if filled - faults > 0}
+								<div
+									class="h-full bg-ok transition-all"
+									style="width: {((filled - faults) / total) * 100}%"
+								></div>
+							{/if}
+							{#if faults > 0}
+								<div
+									class="h-full bg-danger transition-all"
+									style="width: {(faults / total) * 100}%"
+								></div>
+							{/if}
+						</div>
+					</div>
 				</button>
 				<div class="flex items-center gap-2">
+					{#if faults > 0}
+						<span class="rounded-md px-2 py-0.5 text-xs font-medium bg-danger-dim text-danger">
+							{faults} תקלות
+						</span>
+					{/if}
 					<span
-						class="rounded-full px-2 py-0.5 text-xs font-medium {filled === total
-							? 'bg-green-100 text-green-800'
-							: 'bg-gray-200 text-gray-600'}"
+						class="rounded-md px-2 py-0.5 text-xs font-medium {allOk
+							? 'bg-ok-dim text-ok'
+							: complete
+								? 'bg-warn-dim text-warn'
+								: 'bg-surface-600 text-gray-400'}"
 					>
 						{filled}/{total}
 					</span>
-					<button
-						type="button"
-						class="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 hover:bg-green-200"
-						onclick={() => store.markSectionAllOk(section.code)}
-					>
-						הכל תקין
-					</button>
 				</div>
 			</div>
 
 			{#if expandedSections[section.code]}
-				<div class="divide-y divide-gray-100">
-					{#each section.items as item (item.sectionCode)}
+				<div class="border-t border-border" transition:slide={{ duration: 300 }}>
+					{#each section.items as item, idx (item.sectionCode)}
 						{@const checklist = store.inspection.checklist.find(
 							(c) => c.sectionCode === item.sectionCode
 						)}
 						<div
-							class="p-3 {checklist?.status === 'לא תקין' ? 'bg-red-50' : ''}"
+							class="border-b border-border/50 p-3 last:border-b-0 {checklist?.status ===
+							'לא תקין'
+								? 'bg-danger-dim/50'
+								: idx % 2 === 0
+									? 'bg-surface-800'
+									: 'bg-surface-800/50'}"
 						>
 							<div class="mb-2 flex items-start gap-2">
-								<span class="mt-0.5 text-sm font-medium text-gray-500"
+								<span
+									class="mt-0.5 rounded bg-surface-600 px-1.5 py-0.5 text-xs font-mono text-gray-400"
 									>{item.sectionCode}</span
 								>
-								<span class="text-sm">{item.description}</span>
+								<span class="text-sm text-gray-200">{item.description}</span>
 							</div>
-							<div class="flex flex-wrap gap-2">
-								{#each ['תקין', 'לא תקין', '-'] as status}
+							<div class="flex flex-wrap gap-1.5">
+								{#each [{ label: 'תקין', style: 'ok' }, { label: 'לא תקין', style: 'danger' }, { label: 'ל.ק.', style: 'neutral' }] as opt}
+									{@const selected = checklist?.status === opt.label}
 									<label
-										class="flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition-colors {checklist?.status === status ? (status === 'תקין' ? 'border-green-500 bg-green-50 text-green-700' : status === 'לא תקין' ? 'border-red-500 bg-red-50 text-red-700' : 'border-blue-500 bg-blue-50 text-blue-700') : 'border-gray-300 hover:bg-gray-50'}"
+										class="flex cursor-pointer items-center gap-1 rounded-lg border px-3 py-1.5 text-sm transition-all {selected
+											? opt.style === 'ok'
+												? 'border-ok bg-ok-dim text-ok'
+												: opt.style === 'danger'
+													? 'border-danger bg-danger-dim text-danger'
+													: 'border-accent bg-accent-dim text-accent'
+											: 'border-border text-gray-400 active:border-border-light active:text-gray-300'}"
 									>
 										<input
 											type="radio"
 											name="status-{item.sectionCode}"
 											class="sr-only"
-											checked={checklist?.status === status}
+											checked={selected}
 											onchange={() =>
-												store.updateChecklistItem(item.sectionCode, status)}
+												store.updateChecklistItem(
+													item.sectionCode,
+													opt.label
+												)}
 										/>
-										{status}
+										{#if selected && opt.style === 'ok'}✓{/if}
+										{#if selected && opt.style === 'danger'}✗{/if}
+										{opt.label}
 									</label>
 								{/each}
 							</div>
 							<div class="mt-2">
 								<input
 									type="text"
-									class="block w-full rounded border-gray-300 text-sm shadow-sm"
+									class="block w-full border-none bg-surface-700 px-2.5 py-1.5 text-sm"
 									placeholder="הערות..."
 									value={checklist?.notes ?? ''}
 									oninput={(e) =>
