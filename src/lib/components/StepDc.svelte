@@ -7,8 +7,6 @@
 	let { store }: { store: ReturnType<typeof createInspectionStore> } = $props();
 
 	let expandedInverters = $state<Record<number, boolean>>({});
-	let collapsedNodes = $state<Record<string, boolean>>({});
-
 	$effect(() => {
 		for (const c of store.inspection.inverterConfigs) {
 			if (!(c.index in expandedInverters)) {
@@ -20,26 +18,6 @@
 	function toggleInverter(index: number) {
 		haptic('light');
 		expandedInverters[index] = !expandedInverters[index];
-	}
-
-	function toggleNode(id: string) {
-		haptic('light');
-		collapsedNodes[id] = !collapsedNodes[id];
-	}
-
-	function hasChildren(id: string): boolean {
-		return store.inspection.dcMeasurements.some((m) => m.parentId === id);
-	}
-
-	function isVisible(measurement: { id: string; parentId: string | null }): boolean {
-		let current = measurement;
-		while (current.parentId) {
-			if (collapsedNodes[current.parentId]) return false;
-			const parent = store.inspection.dcMeasurements.find((m) => m.id === current.parentId);
-			if (!parent) break;
-			current = parent;
-		}
-		return true;
 	}
 
 	function parseNum(val: string): number | undefined {
@@ -54,7 +32,6 @@
 
 	function handleAddChild(parentId: string) {
 		haptic('medium');
-		collapsedNodes[parentId] = false;
 		store.addDcSubstring(parentId);
 	}
 
@@ -108,35 +85,32 @@
 							<thead>
 								<tr class="bg-surface-700 text-xs text-gray-400">
 									<th
-										class="sticky start-0 z-10 min-w-[120px] bg-surface-700 px-2 py-2.5 text-start font-medium"
+										class="sticky start-0 z-10 bg-surface-700 px-2 py-2.5 text-center font-medium"
 									>
 										מחרוזת
 									</th>
-									<th class="min-w-[72px] px-2 py-2.5 text-start font-medium">
+									<th class="min-w-[72px] px-2 py-2.5 text-center font-medium">
 										קולטים
 									</th>
-									<th class="min-w-[80px] px-2 py-2.5 text-start font-medium">
+									<th class="min-w-[80px] px-2 py-2.5 text-center font-medium">
 										מתח<br /><span class="text-gray-500">(V)</span>
 									</th>
-									<th class="min-w-[80px] px-2 py-2.5 text-start font-medium">
+									<th class="min-w-[80px] px-2 py-2.5 text-center font-medium">
 										זרם<br /><span class="text-gray-500">(A)</span>
 									</th>
-									<th class="min-w-[80px] px-2 py-2.5 text-start font-medium">
+									<th class="min-w-[80px] px-2 py-2.5 text-center font-medium">
 										בידוד<br /><span class="text-gray-500">(MΩ)</span>
 									</th>
-									<th class="min-w-[80px] px-2 py-2.5 text-start font-medium">
+									<th class="min-w-[80px] px-2 py-2.5 text-center font-medium">
 										הזנה −<br /><span class="text-gray-500">(MΩ)</span>
 									</th>
-									<th class="min-w-[80px] px-2 py-2.5 text-start font-medium">
+									<th class="min-w-[80px] px-2 py-2.5 text-center font-medium">
 										הזנה +<br /><span class="text-gray-500">(MΩ)</span>
 									</th>
 								</tr>
 							</thead>
 							<tbody>
 								{#each getOrderedDcTree(store.inspection.dcMeasurements, config.index) as { measurement, depth } (measurement.id)}
-									{#if isVisible(measurement)}
-										{@const isParent = hasChildren(measurement.id)}
-										{@const isCollapsed = !!collapsedNodes[measurement.id]}
 										<tr
 											class="border-t border-border/30 bg-surface-800"
 										>
@@ -146,43 +120,10 @@
 											>
 												<div
 													class="flex items-center gap-1"
-													style="padding-inline-start: {depth * 20}px"
+													style="margin-inline-start: {depth === 1 ? -8 : depth >= 2 ? 48 : 0}px"
 												>
-													<!-- Expand/collapse or tree connector -->
-													{#if isParent}
-														<button
-															type="button"
-															class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-surface-600 active:bg-surface-600"
-															title={isCollapsed ? 'הרחב' : 'כווץ'}
-															onclick={() => toggleNode(measurement.id)}
-														>
-															<svg
-																class="h-4 w-4 transition-transform duration-150 {isCollapsed ? '-rotate-90' : ''}"
-																fill="none"
-																viewBox="0 0 24 24"
-																stroke="currentColor"
-																stroke-width="2"
-															>
-																<path
-																	stroke-linecap="round"
-																	stroke-linejoin="round"
-																	d="M19 9l-7 7-7-7"
-																/>
-															</svg>
-														</button>
-													{:else if depth > 0}
-														<div class="w-7 flex-shrink-0 text-center text-gray-600">└</div>
-													{/if}
-
-													<!-- Label badge -->
-													<span
-														class="inline-flex h-7 min-w-7 items-center justify-center rounded bg-surface-600 px-1.5 text-sm font-bold {depth > 0 ? 'text-gray-400' : 'text-gray-200'}"
-													>
-														{measurement.stringLabel}
-													</span>
-
-													<!-- Add child button (max 3 nesting levels) -->
-													{#if depth < 2}
+													<!-- Add child before label for substrings -->
+													{#if depth > 0 && depth < 2}
 														<button
 															type="button"
 															class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded text-gray-600 transition-colors hover:text-accent active:bg-surface-600"
@@ -195,16 +136,35 @@
 														</button>
 													{/if}
 
-													<!-- Delete button (sub-strings only) -->
-													{#if depth > 0}
+													<!-- Label badge with X overlay -->
+													<span
+														class="relative inline-flex h-7 min-w-7 items-center justify-center rounded bg-surface-600 px-1.5 text-sm font-bold {depth > 0 ? 'text-gray-400' : 'text-gray-200'}"
+													>
+														{measurement.stringLabel}
+														{#if depth > 0}
+															<button
+																type="button"
+																class="absolute -top-1.5 -start-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-surface-700 text-gray-500 transition-colors hover:bg-danger hover:text-white"
+																title="מחק מחרוזת"
+																onclick={() => handleRemove(measurement.id)}
+															>
+																<svg class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+																	<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+																</svg>
+															</button>
+														{/if}
+													</span>
+
+													<!-- Add child after label for top-level -->
+													{#if depth === 0}
 														<button
 															type="button"
-															class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded text-gray-600 transition-colors hover:text-danger active:bg-surface-600"
-															title="מחק מחרוזת"
-															onclick={() => handleRemove(measurement.id)}
+															class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded text-gray-600 transition-colors hover:text-accent active:bg-surface-600"
+															title="הוסף תת-מחרוזת"
+															onclick={() => handleAddChild(measurement.id)}
 														>
-															<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-																<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+															<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+																<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
 															</svg>
 														</button>
 													{/if}
@@ -284,7 +244,6 @@
 												/>
 											</td>
 										</tr>
-									{/if}
 								{/each}
 							</tbody>
 						</table>

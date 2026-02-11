@@ -54,7 +54,7 @@
 </script>
 
 {#if store}
-	<div class="mx-auto w-full max-w-lg px-4 py-4">
+	<div class="mx-auto w-full max-w-lg px-2 py-4">
 		<!-- Header with back button -->
 		<header class="relative mb-4 flex items-center">
 			<button
@@ -76,7 +76,7 @@
 		</header>
 
 		<!-- Step content -->
-		<main class="mb-24 min-h-[60vh]">
+		<main class="mb-32 min-h-[60vh]">
 			{#key currentSlug}
 				<div in:fade={{ duration: 250 }}>
 					{#if currentStepIndex === 0}
@@ -99,7 +99,7 @@
 		</main>
 
 		<!-- Step navigation (bottom bar) -->
-		<nav class="fixed inset-x-0 bottom-0 flex justify-center px-3 pb-3 pt-8 bg-gradient-to-t from-surface-900 from-40% to-transparent">
+		<nav class="fixed inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-3 pt-8 bg-gradient-to-t from-surface-900 from-40% to-transparent">
 			<div class="overflow-x-auto rounded-2xl border border-border-light/50 bg-surface-800/90 px-3 py-2.5 shadow-lg shadow-black/30 backdrop-blur-md md:max-w-fit">
 				<div class="flex gap-2">
 					{#each STEP_SLUGS as slug (slug)}

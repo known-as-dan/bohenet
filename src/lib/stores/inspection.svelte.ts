@@ -103,7 +103,7 @@ function getDescendantIds(measurements: DcStringMeasurement[], parentId: string)
 /** Find the next available child label for a parent */
 function nextChildLabel(measurements: DcStringMeasurement[], parentId: string, parentLabel: string): string {
 	const siblings = measurements.filter((m) => m.parentId === parentId);
-	return `${parentLabel}${siblings.length + 1}`;
+	return `${parentLabel}.${siblings.length + 1}`;
 }
 
 /** Find the next available top-level label for an inverter */
@@ -177,7 +177,7 @@ export function createInspectionStore(report: SavedReport) {
 		save();
 	}
 
-	function setInverterConfigs(count: number, defaultStrings = 9) {
+	function setInverterConfigs(count: number, defaultStrings = 4) {
 		const existing = currentReport.inspection.inverterConfigs;
 		const configs: InverterConfig[] = Array.from({ length: count }, (_, i) => ({
 			index: i + 1,
