@@ -7,7 +7,7 @@
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 		<meta name="apple-mobile-web-app-title" content="ינשוף" />
-		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<link rel="icon" href="/favicon.png" type="image/png" />
 		<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48 256x256" />
 		<link rel="manifest" href="/manifest.json" />
 		<link rel="apple-touch-icon" href="/icon-192.png" />
@@ -19,18 +19,5 @@
 	</head>
 	<body data-sveltekit-preload-data="hover" style="background-color: #0f1117; touch-action: manipulation;">
 		<div style="display: contents">%sveltekit.body%</div>
-		<script>
-			// Prevent pinch-to-zoom
-			document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
-			document.addEventListener('gesturechange', function(e) { e.preventDefault(); });
-			document.addEventListener('gestureend', function(e) { e.preventDefault(); });
-			// Prevent double-tap zoom
-			document.addEventListener('touchend', function(e) {
-				if (e.touches.length > 0) return;
-				var now = Date.now();
-				if (now - (window._lastTouch || 0) < 300) { e.preventDefault(); }
-				window._lastTouch = now;
-			}, { passive: false });
-		</script>
-	</body>
+		</body>
 </html>

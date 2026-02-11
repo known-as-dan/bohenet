@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { fly, slide, fade } from 'svelte/transition';
+	import { flip } from 'svelte/animate';
 	import { cubicOut } from 'svelte/easing';
 	import { haptic } from '$lib/utils/haptics.js';
 	import { downloadWorkbook } from '$lib/mappers/excel.js';
 	import { checklistSections } from '$lib/config/checklist.js';
 	import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
 	import {
 		listReports,
 		loadReport,
@@ -18,6 +18,8 @@
 		migrateOldData,
 		type ReportSummary
 	} from '$lib/stores/reports.js';
+
+	let { onopen }: { onopen: (id: string) => void } = $props();
 
 	// Migrate old data on first run
 	if (browser) {
@@ -43,12 +45,12 @@
 		haptic('medium');
 		const report = createNewReport(activeFolder || 'כללי');
 		saveReport(report);
-		goto(`/report/${report.id}`);
+		refresh();
 	}
 
 	function handleOpen(id: string) {
 		haptic('light');
-		goto(`/report/${id}`);
+		onopen(id);
 	}
 
 	function handleDelete(id: string) {
@@ -148,32 +150,22 @@
 	let allFolders = $derived([...new Set([...folders, ...reports.map((r) => r.folder)])]);
 </script>
 
-<div class="mx-auto max-w-lg px-4 py-6">
+<div class="mx-auto max-w-lg lg:max-w-3xl px-4 lg:px-8 pb-24 pt-6">
 	<!-- Header -->
-	<div class="mb-8 flex flex-col items-center">
-		<img src="/logo.svg" alt="ינשוף" class="mb-3 h-28 w-28" />
-		<h1 class="mb-0.5 text-2xl font-bold text-white">ינשוף</h1>
-		<p class="text-sm text-gray-500">בדיקות תקופתיות PV</p>
+	<div class="mb-4 flex items-center gap-3">
+		<img src="/logo.png" alt="ינשוף" class="h-14 w-14" />
+		<div>
+			<h1 class="text-3xl lg:text-4xl font-bold text-white">ינשוף</h1>
+			<p class="text-sm lg:text-base text-gray-500">בדיקות תקופתיות PV</p>
+		</div>
 	</div>
-
-	<!-- New Report Button -->
-	<button
-		type="button"
-		class="mb-6 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-white shadow-md shadow-accent/15 transition-all hover:bg-accent-hover hover:shadow-lg hover:shadow-accent/25 active:scale-[0.98]"
-		onclick={handleNew}
-	>
-		<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-		</svg>
-		בדיקה חדשה
-	</button>
 
 	<!-- Folders -->
 	<div class="mb-4">
 		<div class="mb-2 flex flex-wrap gap-1.5">
 			<button
 				type="button"
-				class="rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors {activeFolder === null ? 'bg-accent text-white' : 'bg-surface-800 text-gray-400 hover:bg-surface-700 hover:text-gray-300 active:bg-surface-700'}"
+				class="rounded-lg px-3.5 lg:px-4 py-1.5 lg:py-2 text-sm lg:text-base font-medium transition-colors {activeFolder === null ? 'bg-accent text-white' : 'bg-surface-800 text-gray-400 hover:bg-surface-700 hover:text-gray-300 active:bg-surface-700'}"
 				onclick={() => (activeFolder = null)}
 			>
 				הכל ({reports.length})
@@ -184,7 +176,7 @@
 				{@const isDefault = folder === 'כללי'}
 				<button
 					type="button"
-					class="flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors {isActive ? 'bg-accent text-white' : 'bg-surface-800 text-gray-400 hover:bg-surface-700 hover:text-gray-300 active:bg-surface-700'}"
+					class="flex items-center gap-1.5 rounded-lg px-3.5 lg:px-4 py-1.5 lg:py-2 text-sm lg:text-base font-medium transition-colors {isActive ? 'bg-accent text-white' : 'bg-surface-800 text-gray-400 hover:bg-surface-700 hover:text-gray-300 active:bg-surface-700'}"
 					onclick={() => (activeFolder = isActive ? null : folder)}
 				>
 					<svg class="h-3.5 w-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -205,33 +197,32 @@
 					{/if}
 				</button>
 			{/each}
-			<button
-				type="button"
-				class="rounded-lg bg-surface-800 px-3.5 py-1.5 text-sm text-gray-500 transition-colors hover:bg-surface-700 hover:text-gray-400 active:bg-surface-700"
-				onclick={() => (showNewFolder = !showNewFolder)}
-			>
-				+ תיקייה
-			</button>
-		</div>
-
-		{#if showNewFolder}
-			<div class="flex gap-2" transition:slide={{ duration: 300, easing: cubicOut }}>
-				<input
-					type="text"
-					class="flex-1 rounded-lg border-border bg-surface-700 px-3 py-2 text-sm"
-					placeholder="שם תיקייה..."
-					bind:value={newFolderName}
-					onkeydown={(e) => e.key === 'Enter' && handleAddFolder()}
-				/>
+			{#if showNewFolder}
+				<div class="inline-flex items-center rounded-lg bg-surface-700 ring-1 ring-accent/50" transition:fly={{ x: -8, duration: 200, easing: cubicOut }}>
+					<!-- svelte-ignore a11y_autofocus -->
+					<input
+						type="text"
+						autofocus
+						class="w-24 border-none bg-transparent px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:ring-0"
+						placeholder="שם תיקייה..."
+						bind:value={newFolderName}
+						onkeydown={(e) => {
+							if (e.key === 'Enter') handleAddFolder();
+							if (e.key === 'Escape') { showNewFolder = false; newFolderName = ''; }
+						}}
+						onblur={() => { if (!newFolderName.trim()) { showNewFolder = false; newFolderName = ''; } }}
+					/>
+				</div>
+			{:else}
 				<button
 					type="button"
-					class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover active:bg-accent/80"
-					onclick={handleAddFolder}
+					class="rounded-lg px-3.5 lg:px-4 py-1.5 lg:py-2 text-sm lg:text-base text-gray-500 transition-colors hover:bg-surface-700 hover:text-gray-400 active:bg-surface-700"
+					onclick={() => (showNewFolder = true)}
 				>
-					צור
+					+ תיקייה
 				</button>
-			</div>
-		{/if}
+			{/if}
+		</div>
 	</div>
 
 	<!-- Reports List -->
@@ -252,11 +243,13 @@
 			<p class="mt-1 text-sm text-gray-500">לחץ "בדיקה חדשה" להתחיל</p>
 		</div>
 	{:else}
-		<div class="space-y-2.5">
+		<div class="space-y-2.5 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
 			{#each filteredReports as report, i (report.id)}
 				<div
 					class="cursor-pointer rounded-xl border border-border/60 bg-surface-800 p-3.5 transition-all hover:border-border-light hover:bg-surface-700 active:border-border-light active:bg-surface-700"
-					in:fly|global={{ y: 12, duration: 350, delay: Math.min(i * 50, 250), easing: cubicOut }}
+					in:fly={{ y: 12, duration: 350, delay: Math.min(i * 50, 250), easing: cubicOut }}
+					out:slide={{ duration: 300, easing: cubicOut }}
+					animate:flip={{ duration: 300, easing: cubicOut }}
 					role="button"
 					tabindex="0"
 					onclick={() => handleOpen(report.id)}
@@ -265,14 +258,12 @@
 					<div class="mb-1.5 flex items-start justify-between">
 						<div class="min-w-0 flex-1">
 							<h3 class="truncate text-[15px] font-semibold text-white">{report.name}</h3>
-							<p class="text-sm text-gray-500">
-								{report.siteName || 'ללא שם אתר'} &middot; {report.inspectionDate}
-							</p>
+							<p class="text-sm text-gray-500">{report.inspectionDate}</p>
 						</div>
 						<div class="flex gap-0.5">
 							<button
 								type="button"
-								class="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-ok-dim hover:text-ok active:bg-ok-dim active:text-ok disabled:opacity-40"
+								class="rounded-lg p-1.5 lg:p-2.5 text-gray-500 transition-colors hover:bg-ok-dim hover:text-ok active:bg-ok-dim active:text-ok disabled:opacity-40"
 								title="ייצוא לאקסל"
 								disabled={exportingId === report.id}
 								onclick={(e) => { e.stopPropagation(); handleExport(report.id); }}
@@ -290,7 +281,7 @@
 							</button>
 							<button
 								type="button"
-								class="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-surface-600 hover:text-gray-300 active:bg-surface-600 active:text-gray-300"
+								class="rounded-lg p-1.5 lg:p-2.5 text-gray-500 transition-colors hover:bg-surface-600 hover:text-gray-300 active:bg-surface-600 active:text-gray-300"
 								title="שכפל"
 								onclick={(e) => { e.stopPropagation(); handleDuplicate(report.id); }}
 							>
@@ -300,7 +291,7 @@
 							</button>
 							<button
 								type="button"
-								class="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-danger-dim hover:text-danger active:bg-danger-dim active:text-danger"
+								class="rounded-lg p-1.5 lg:p-2.5 text-gray-500 transition-colors hover:bg-danger-dim hover:text-danger active:bg-danger-dim active:text-danger"
 								title="מחק"
 								onclick={(e) => { e.stopPropagation(); handleDelete(report.id); }}
 							>
@@ -323,4 +314,18 @@
 			{/each}
 		</div>
 	{/if}
+
+	<!-- Fixed bottom New Report Button -->
+	<div class="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-lg lg:max-w-3xl px-4 lg:px-8 pb-12 pt-3 bg-gradient-to-t from-[#0f1117] from-60% to-transparent">
+		<button
+			type="button"
+			class="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 lg:py-4 text-base lg:text-lg font-semibold text-white shadow-lg shadow-accent/20 transition-all hover:bg-accent-hover hover:shadow-xl hover:shadow-accent/30 active:scale-[0.98]"
+			onclick={handleNew}
+		>
+			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+			</svg>
+			בדיקה חדשה
+		</button>
+	</div>
 </div>

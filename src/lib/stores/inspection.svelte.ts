@@ -1,13 +1,14 @@
-import { createChecklistFromTemplate, checklistSections } from '../config/checklist.js';
+import { createChecklistFromTemplate, checklistSections, allowLKCodes, getItemConfig } from '../config/checklist.js';
 import { createAcMeasurementsFromTemplate } from '../config/ac.js';
-import type {
-	InspectionMeta,
-	InverterConfig,
-	DcStringMeasurement,
-	Defect
+import {
+	buildReportName,
+	type InspectionMeta,
+	type InverterConfig,
+	type DcStringMeasurement,
+	type Defect
 } from '../models/inspection.js';
 import type { SavedReport } from './reports.js';
-import { saveReport } from './reports.js';
+import { saveReport, safeSetItem } from './reports.js';
 
 /** Map a checklist sectionCode like "1.5" to its parent section title */
 function getSectionTitle(sectionCode: string): string {
@@ -19,7 +20,7 @@ function getSectionTitle(sectionCode: string): string {
 function shortenFault(desc: string): string {
 	// Strip leading imperative verbs
 	let s = desc
-		.replace(/^(ודא|בדוק|בצע|ציין|חזק|מדוד)\s+(את\s+|כי\s+|על\s+)?/i, '')
+		.replace(/^(ודא|וודא|בחן|בדוק|בצע|ציין|חזק|מדוד|השווה)\s+(את\s+|כי\s+|על\s+)?/i, '')
 		.replace(/^(המצאות ו)/, '');
 	// Take only the first sentence/clause
 	s = s.split(/[.;]/, 1)[0].split(' - ', 1)[0];
@@ -30,15 +31,21 @@ function shortenFault(desc: string): string {
 	return s;
 }
 
+/** crypto.randomUUID fallback for older iOS Safari / non-HTTPS */
+function uuid(): string {
+	if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+		return crypto.randomUUID();
+	}
+	return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) =>
+		(+c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (+c / 4)))).toString(16)
+	);
+}
+
 const INSPECTOR_KEY = 'yanshuf_inspector';
 const STRING_LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 function saveInspectorName(name: string) {
-	try {
-		localStorage.setItem(INSPECTOR_KEY, name);
-	} catch {
-		/* ignore */
-	}
+	safeSetItem(INSPECTOR_KEY, name);
 }
 
 function createDcMeasurement(
@@ -47,7 +54,7 @@ function createDcMeasurement(
 	parentId: string | null = null
 ): DcStringMeasurement {
 	return {
-		id: crypto.randomUUID(),
+		id: uuid(),
 		parentId,
 		inverterIndex,
 		stringLabel,
@@ -126,6 +133,16 @@ function generateInverterSerials(configs: InverterConfig[]) {
 export function createInspectionStore(report: SavedReport) {
 	let currentReport = $state<SavedReport>(report);
 
+	// Defensive defaults: old localStorage data may have undefined arrays
+	const ins = currentReport.inspection;
+	ins.meta.siteGroup ??= '';
+	ins.inverterConfigs ??= [];
+	ins.checklist ??= [];
+	ins.dcMeasurements ??= [];
+	ins.acMeasurements ??= [];
+	ins.inverterSerials ??= [];
+	ins.defects ??= [];
+
 	// Initialize checklist/AC if empty (new report), or sync with template
 	if (currentReport.inspection.checklist.length === 0) {
 		currentReport.inspection.checklist = createChecklistFromTemplate();
@@ -139,9 +156,29 @@ export function createInspectionStore(report: SavedReport) {
 			}
 		}
 	}
+	// Clear stale לא קיים values on items that no longer allow it
+	for (const item of currentReport.inspection.checklist) {
+		if (item.status === 'לא קיים' && !allowLKCodes.has(item.sectionCode)) {
+			item.status = undefined;
+		}
+	}
+
+	// Initialize inverter configs if empty (new report)
+	if (currentReport.inspection.inverterConfigs.length === 0) {
+		const defaultCount = 3;
+		const configs: InverterConfig[] = Array.from({ length: defaultCount }, (_, i) => ({
+			index: i + 1,
+			label: `ממיר ${i + 1}`,
+			stringCount: 4
+		}));
+		currentReport.inspection.inverterConfigs = configs;
+		currentReport.inspection.dcMeasurements = generateDcMeasurements(configs);
+		currentReport.inspection.inverterSerials = generateInverterSerials(configs);
+	}
+
 	// Migrate legacy DC measurements: backfill id/parentId
 	for (const m of currentReport.inspection.dcMeasurements) {
-		if (!m.id) m.id = crypto.randomUUID();
+		if (!m.id) m.id = uuid();
 		if (m.parentId === undefined) m.parentId = null;
 	}
 
@@ -164,16 +201,9 @@ export function createInspectionStore(report: SavedReport) {
 		}
 	}
 
-	function updateReportName(name: string) {
-		currentReport.name = name;
-		save();
-	}
-
 	function updateMeta(meta: Partial<InspectionMeta>) {
 		currentReport.inspection.meta = { ...currentReport.inspection.meta, ...meta };
-		if (meta.siteName && (currentReport.name === 'בדיקה חדשה' || !currentReport.name)) {
-			currentReport.name = meta.siteName;
-		}
+		currentReport.name = buildReportName(currentReport.inspection.meta);
 		save();
 	}
 
@@ -209,6 +239,16 @@ export function createInspectionStore(report: SavedReport) {
 		if (item) {
 			if (status !== undefined) item.status = status as typeof item.status;
 			if (notes !== undefined) item.notes = notes;
+			// Auto-cascade: 5.4 (climate monitoring) → 5.5, 5.6 (sensors)
+			if (sectionCode === '5.4' && status !== undefined) {
+				for (const code of ['5.5', '5.6']) {
+					const dep = currentReport.inspection.checklist.find((c) => c.sectionCode === code);
+					if (dep) {
+						dep.status = status === 'לא קיים' ? 'לא קיים' : undefined;
+						dep.notes = status === 'לא קיים' ? '' : dep.notes;
+					}
+				}
+			}
 			save();
 		}
 	}
@@ -217,7 +257,12 @@ export function createInspectionStore(report: SavedReport) {
 		currentReport.inspection.checklist
 			.filter((c) => c.sectionCode.startsWith(sectionCode + '.'))
 			.forEach((c) => {
-				if (!c.status) c.status = 'תקין';
+				if (!c.status) {
+					const cfg = getItemConfig(c.sectionCode);
+					// Skip select items — they need explicit choice
+					if (cfg?.selectOptions) return;
+					c.status = cfg?.okLabel ?? 'תקין';
+				}
 			});
 		save();
 	}
@@ -343,7 +388,6 @@ export function createInspectionStore(report: SavedReport) {
 			return allDefects;
 		},
 		save,
-		updateReportName,
 		updateMeta,
 		setInverterConfigs,
 		updateInverterConfig,

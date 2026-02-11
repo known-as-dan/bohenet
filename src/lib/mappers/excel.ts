@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import type { Defect, Inspection } from '../models/inspection.js';
+import { buildExportFilename, type Defect, type Inspection } from '../models/inspection.js';
 import { getOrderedDcTree } from '../stores/inspection.svelte.js';
 
 // ── Template-based Excel export ──────────────────────────────────
@@ -85,7 +85,7 @@ function buildCodeToRowMap(ws: ExcelJS.Worksheet): Map<string, number> {
 
 // ── Fill checklist sheet ─────────────────────────────────────────
 
-function fillChecklistSheet(ws: ExcelJS.Worksheet, inspection: Inspection) {
+function fillChecklistSheet(ws: ExcelJS.Worksheet, inspection: Inspection): number {
 	// Row 2: B=site name, D=inspection date
 	// Row 3: B=inspector name, D=signature
 	setCell(ws, 2, 2, inspection.meta.siteName);
@@ -96,14 +96,17 @@ function fillChecklistSheet(ws: ExcelJS.Worksheet, inspection: Inspection) {
 	}
 
 	const codeToRow = buildCodeToRowMap(ws);
+	let maxRow = 3;
 
 	for (const item of inspection.checklist) {
 		const row = codeToRow.get(item.sectionCode);
 		if (row !== undefined) {
 			if (item.status) setCell(ws, row, 3, item.status);
 			if (item.notes) setCell(ws, row, 4, item.notes);
+			if (row > maxRow) maxRow = row;
 		}
 	}
+	return maxRow;
 }
 
 // ── Fill DC sheet ────────────────────────────────────────────────
@@ -136,8 +139,9 @@ function fillDcSheet(ws: ExcelJS.Worksheet, inspection: Inspection): number {
 
 // ── Fill AC sheet ────────────────────────────────────────────────
 
-function fillAcSheet(ws: ExcelJS.Worksheet, inspection: Inspection) {
+function fillAcSheet(ws: ExcelJS.Worksheet, inspection: Inspection): number {
 	const codeToRow = buildCodeToRowMap(ws);
+	let maxRow = 1;
 
 	for (const m of inspection.acMeasurements) {
 		const row = codeToRow.get(m.itemCode);
@@ -146,6 +150,7 @@ function fillAcSheet(ws: ExcelJS.Worksheet, inspection: Inspection) {
 				setCell(ws, row, 3, m.result);
 			}
 			if (m.notes) setCell(ws, row, 4, m.notes);
+			if (row > maxRow) maxRow = row;
 		}
 	}
 
@@ -155,6 +160,7 @@ function fillAcSheet(ws: ExcelJS.Worksheet, inspection: Inspection) {
 		const bVal = String(row.getCell(2).value ?? '');
 		if (bVal.startsWith('מהפך')) {
 			serialRows.push(rowNumber);
+			if (rowNumber > maxRow) maxRow = rowNumber;
 		}
 	});
 
@@ -164,6 +170,7 @@ function fillAcSheet(ws: ExcelJS.Worksheet, inspection: Inspection) {
 			setCell(ws, serialRows[idx], 3, serial.serialNumber);
 		}
 	}
+	return maxRow;
 }
 
 // ── Fill defects sheet ───────────────────────────────────────────
@@ -233,8 +240,8 @@ export async function downloadWorkbook(inspection: Inspection, allDefects?: Defe
 
 	const wsChecklist = wb.getWorksheet(SHEET_CHECKLIST);
 	if (wsChecklist) {
-		fillChecklistSheet(wsChecklist, inspection);
-		bakeTableStripes(wsChecklist, 2, 84, 4);
+		const lastRow = fillChecklistSheet(wsChecklist, inspection);
+		bakeTableStripes(wsChecklist, 2, lastRow, 4);
 	}
 
 	const wsDc = wb.getWorksheet(SHEET_DC);
@@ -245,8 +252,8 @@ export async function downloadWorkbook(inspection: Inspection, allDefects?: Defe
 
 	const wsAc = wb.getWorksheet(SHEET_AC);
 	if (wsAc) {
-		fillAcSheet(wsAc, inspection);
-		bakeTableStripes(wsAc, 2, 42, 4);
+		const lastRow = fillAcSheet(wsAc, inspection);
+		bakeTableStripes(wsAc, 2, lastRow, 4);
 	}
 
 	const defects = allDefects ?? inspection.defects;
@@ -275,7 +282,7 @@ export async function downloadWorkbook(inspection: Inspection, allDefects?: Defe
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement('a');
 	a.href = url;
-	a.download = `בדיקה_${inspection.meta.siteName || 'ללא_שם'}_${inspection.meta.inspectionDate}.xlsx`;
+	a.download = buildExportFilename(inspection.meta);
 	a.click();
 	URL.revokeObjectURL(url);
 }

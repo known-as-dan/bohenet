@@ -6,13 +6,27 @@
 
 <div class="space-y-4">
 	<div class="space-y-1">
-		<h2 class="text-lg font-bold text-white">פרטי בדיקה</h2>
-		<p class="text-sm text-gray-400">מלא את פרטי האתר והבודק</p>
+		<h2 class="text-lg lg:text-xl font-bold text-white">פרטי בדיקה</h2>
+		<p class="text-sm lg:text-base text-gray-400">מלא את פרטי האתר והבודק</p>
 	</div>
 
-	<div class="space-y-4">
+	<div class="space-y-4 lg:grid lg:grid-cols-2 lg:gap-x-6 lg:gap-y-4 lg:space-y-0">
 		<div>
-			<label for="siteName" class="mb-1.5 block text-sm font-medium text-gray-300">שם אתר</label>
+			<label for="siteGroup" class="mb-1.5 block text-sm lg:text-base font-medium text-gray-300"
+				>לקוח / קבוצת אתרים</label
+			>
+			<input
+				id="siteGroup"
+				type="text"
+				class="block w-full px-3 py-2"
+				value={store.inspection.meta.siteGroup}
+				oninput={(e) => store.updateMeta({ siteGroup: e.currentTarget.value })}
+				placeholder="לדוגמה: אנרגיה ירוקה בע״מ"
+			/>
+		</div>
+
+		<div>
+			<label for="siteName" class="mb-1.5 block text-sm lg:text-base font-medium text-gray-300">אתר</label>
 			<input
 				id="siteName"
 				type="text"
@@ -24,7 +38,7 @@
 		</div>
 
 		<div>
-			<label for="inspectionDate" class="mb-1.5 block text-sm font-medium text-gray-300"
+			<label for="inspectionDate" class="mb-1.5 block text-sm lg:text-base font-medium text-gray-300"
 				>תאריך בדיקה</label
 			>
 			<input
@@ -37,7 +51,7 @@
 		</div>
 
 		<div>
-			<label for="inspectorName" class="mb-1.5 block text-sm font-medium text-gray-300"
+			<label for="inspectorName" class="mb-1.5 block text-sm lg:text-base font-medium text-gray-300"
 				>שם בודק</label
 			>
 			<input
@@ -51,7 +65,7 @@
 		</div>
 
 		<div>
-			<label for="signature" class="mb-1.5 block text-sm font-medium text-gray-300"
+			<label for="signature" class="mb-1.5 block text-sm lg:text-base font-medium text-gray-300"
 				>חתימה <span class="text-gray-500">(אופציונלי)</span></label
 			>
 			<input
@@ -65,19 +79,10 @@
 		</div>
 	</div>
 
-	<!-- Report name -->
-	<div class="rounded-xl border border-border bg-surface-800 p-4">
-		<label for="reportName" class="mb-1.5 block text-sm font-medium text-gray-300"
-			>שם הדוח</label
-		>
-		<input
-			id="reportName"
-			type="text"
-			class="block w-full px-3 py-2"
-			value={store.report.name}
-			oninput={(e) => store.updateReportName(e.currentTarget.value)}
-			placeholder="שם לזיהוי הדוח"
-		/>
-		<p class="mt-1.5 text-xs text-gray-500">שם זה מוצג ברשימת הדוחות השמורים</p>
+	<!-- Auto-generated report name -->
+	<div class="rounded-xl border border-border bg-surface-800 p-4 lg:col-span-2">
+		<div class="mb-1.5 text-sm font-medium text-gray-300">שם הדוח</div>
+		<p class="text-sm text-gray-400">{store.report.name}</p>
+		<p class="mt-1.5 text-xs text-gray-500">שם הדוח נוצר אוטומטית מפרטי הבדיקה</p>
 	</div>
 </div>

@@ -17,6 +17,7 @@ export type ReportSummary = {
 	folder: string;
 	createdAt: string;
 	updatedAt: string;
+	siteGroup: string;
 	siteName: string;
 	inspectorName: string;
 	inspectionDate: string;
@@ -25,6 +26,17 @@ export type ReportSummary = {
 const REPORTS_INDEX_KEY = 'yanshuf_reports_index';
 const REPORT_PREFIX = 'yanshuf_report_';
 const FOLDERS_KEY = 'yanshuf_folders';
+
+export function safeSetItem(key: string, value: string) {
+	try {
+		localStorage.setItem(key, value);
+	} catch (e) {
+		if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+			alert('זיכרון המכשיר מלא. אנא מחק בדיקות ישנות כדי לשמור בדיקות חדשות.');
+		}
+		console.error('Failed to save to localStorage', e);
+	}
+}
 
 function generateId(): string {
 	return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -41,7 +53,7 @@ function loadIndex(): ReportSummary[] {
 }
 
 function saveIndex(index: ReportSummary[]) {
-	localStorage.setItem(REPORTS_INDEX_KEY, JSON.stringify(index));
+	safeSetItem(REPORTS_INDEX_KEY, JSON.stringify(index));
 }
 
 export function loadFolders(): string[] {
@@ -55,7 +67,7 @@ export function loadFolders(): string[] {
 }
 
 export function saveFolders(folders: string[]) {
-	localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
+	safeSetItem(FOLDERS_KEY, JSON.stringify(folders));
 }
 
 export function listReports(): ReportSummary[] {
@@ -74,7 +86,7 @@ export function loadReport(id: string): SavedReport | null {
 
 export function saveReport(report: SavedReport) {
 	report.updatedAt = new Date().toISOString();
-	localStorage.setItem(REPORT_PREFIX + report.id, JSON.stringify(report));
+	safeSetItem(REPORT_PREFIX + report.id, JSON.stringify(report));
 
 	// Update index
 	const index = loadIndex();
@@ -84,6 +96,7 @@ export function saveReport(report: SavedReport) {
 		folder: report.folder,
 		createdAt: report.createdAt,
 		updatedAt: report.updatedAt,
+		siteGroup: report.inspection.meta.siteGroup ?? '',
 		siteName: report.inspection.meta.siteName,
 		inspectorName: report.inspection.meta.inspectorName,
 		inspectionDate: report.inspection.meta.inspectionDate
@@ -140,6 +153,7 @@ export function createNewReport(folder = 'כללי'): SavedReport {
 		updatedAt: now,
 		inspection: {
 			meta: {
+				siteGroup: '',
 				siteName: '',
 				inspectionDate: new Date().toISOString().split('T')[0],
 				inspectorName,

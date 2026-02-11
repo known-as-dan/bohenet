@@ -12,7 +12,7 @@
 		store.inspection.checklist.filter((c) => c.status != null).length
 	);
 	const passedChecklist = $derived(
-		store.inspection.checklist.filter((c) => c.status === 'תקין').length
+		store.inspection.checklist.filter((c) => c.status && c.status !== 'לא תקין' && c.status !== 'לא קיים').length
 	);
 	const failedChecklist = $derived(
 		store.inspection.checklist.filter((c) => c.status === 'לא תקין').length
@@ -32,7 +32,8 @@
 
 	const warnings = $derived(() => {
 		const w: string[] = [];
-		if (!store.inspection.meta.siteName) w.push('לא הוזן שם אתר');
+		if (!store.inspection.meta.siteGroup) w.push('לא הוזן לקוח / קבוצת אתרים');
+		if (!store.inspection.meta.siteName) w.push('לא הוזן אתר');
 		if (!store.inspection.meta.inspectorName) w.push('לא הוזן שם בודק');
 		if (!store.inspection.meta.inspectionDate) w.push('לא הוזן תאריך');
 		if (doneChecklist < totalChecklist)
@@ -66,14 +67,14 @@
 
 <div class="space-y-4">
 	<div>
-		<h2 class="text-lg font-bold text-white">סיכום ויצוא</h2>
-		<p class="text-sm text-gray-400">סקירת הדוח ויצוא לאקסל</p>
+		<h2 class="text-lg lg:text-xl font-bold text-white">סיכום ויצוא</h2>
+		<p class="text-sm lg:text-base text-gray-400">סקירת הדוח ויצוא לאקסל</p>
 	</div>
 
 	<!-- Stats Grid -->
-	<div class="grid grid-cols-2 gap-3">
+	<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
 		<div class="rounded-xl border border-border bg-surface-800 p-3 text-center">
-			<div class="text-2xl font-bold text-accent">{doneChecklist}/{totalChecklist}</div>
+			<div class="text-2xl lg:text-3xl font-bold text-accent">{doneChecklist}/{totalChecklist}</div>
 			<div class="mt-1 text-xs text-gray-400">צ׳קליסט</div>
 			<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-600">
 				<div
@@ -86,7 +87,7 @@
 		</div>
 
 		<div class="rounded-xl border border-border bg-surface-800 p-3 text-center">
-			<div class="text-2xl font-bold text-ok">{passedChecklist}</div>
+			<div class="text-2xl lg:text-3xl font-bold text-ok">{passedChecklist}</div>
 			<div class="mt-1 text-xs text-gray-400">עברו בהצלחה</div>
 			{#if failedChecklist > 0}
 				<div class="mt-2 text-sm font-semibold text-danger">{failedChecklist} נכשלו</div>
@@ -94,7 +95,7 @@
 		</div>
 
 		<div class="rounded-xl border border-border bg-surface-800 p-3 text-center">
-			<div class="text-2xl font-bold text-accent">{filledDc}/{totalDc}</div>
+			<div class="text-2xl lg:text-3xl font-bold text-accent">{filledDc}/{totalDc}</div>
 			<div class="mt-1 text-xs text-gray-400">מדידות DC</div>
 			<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-600">
 				<div
@@ -105,7 +106,7 @@
 		</div>
 
 		<div class="rounded-xl border border-border bg-surface-800 p-3 text-center">
-			<div class="text-2xl font-bold text-accent">{filledAc}/{totalAc}</div>
+			<div class="text-2xl lg:text-3xl font-bold text-accent">{filledAc}/{totalAc}</div>
 			<div class="mt-1 text-xs text-gray-400">מדידות AC</div>
 			<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-600">
 				<div
@@ -116,36 +117,40 @@
 		</div>
 	</div>
 
-	<!-- Defects summary -->
-	<div class="rounded-xl border border-border bg-surface-800 p-3">
-		<div class="flex items-center gap-2">
-			<span class="text-lg">{defectCount > 0 ? '⚠️' : '✅'}</span>
-			<span class="font-semibold text-white">
-				{defectCount > 0 ? `${defectCount} ליקויים תועדו` : 'לא נמצאו ליקויים'}
-			</span>
-		</div>
-	</div>
-
-	<!-- Site info card -->
-	{#if store.inspection.meta.siteName}
+	<!-- Defects summary + Site info -->
+	<div class="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
 		<div class="rounded-xl border border-border bg-surface-800 p-3">
-			<h3 class="mb-2 text-sm font-semibold text-gray-400">פרטי אתר</h3>
-			<div class="space-y-1 text-sm text-gray-300">
-				{#if store.inspection.meta.siteName}
-					<div><span class="text-gray-500">אתר:</span> {store.inspection.meta.siteName}</div>
-				{/if}
-				{#if store.inspection.meta.inspectorName}
-					<div>
-						<span class="text-gray-500">בודק:</span>
-						{store.inspection.meta.inspectorName}
-					</div>
-				{/if}
-				{#if store.inspection.meta.inspectionDate}
-					<div><span class="text-gray-500">תאריך:</span> {store.inspection.meta.inspectionDate}</div>
-				{/if}
+			<div class="flex items-center gap-2">
+				<span class="text-lg">{defectCount > 0 ? '⚠️' : '✅'}</span>
+				<span class="font-semibold text-white">
+					{defectCount > 0 ? `${defectCount} ליקויים תועדו` : 'לא נמצאו ליקויים'}
+				</span>
 			</div>
 		</div>
-	{/if}
+
+		{#if store.inspection.meta.siteGroup || store.inspection.meta.siteName}
+			<div class="rounded-xl border border-border bg-surface-800 p-3">
+				<h3 class="mb-2 text-sm font-semibold text-gray-400">פרטי אתר</h3>
+				<div class="space-y-1 text-sm lg:text-base text-gray-300">
+					{#if store.inspection.meta.siteGroup}
+						<div><span class="text-gray-500">לקוח:</span> {store.inspection.meta.siteGroup}</div>
+					{/if}
+					{#if store.inspection.meta.siteName}
+						<div><span class="text-gray-500">אתר:</span> {store.inspection.meta.siteName}</div>
+					{/if}
+					{#if store.inspection.meta.inspectorName}
+						<div>
+							<span class="text-gray-500">בודק:</span>
+							{store.inspection.meta.inspectorName}
+						</div>
+					{/if}
+					{#if store.inspection.meta.inspectionDate}
+						<div><span class="text-gray-500">תאריך:</span> {store.inspection.meta.inspectionDate}</div>
+					{/if}
+				</div>
+			</div>
+		{/if}
+	</div>
 
 	<!-- Warnings -->
 	{#if warnings().length > 0}
@@ -165,7 +170,7 @@
 	<!-- Export button -->
 	<button
 		type="button"
-		class="w-full rounded-xl px-4 py-3 text-center font-bold text-white shadow-lg transition-all active:scale-[.98] disabled:opacity-50 {exportState === 'success' ? 'bg-ok animate-success-pulse' : exportState === 'error' ? 'bg-danger animate-shake-x' : 'bg-ok/90 hover:bg-ok active:bg-ok'}"
+		class="w-full rounded-xl px-4 py-3 lg:py-4 text-center font-bold lg:text-lg text-white shadow-lg transition-all active:scale-[.98] disabled:opacity-50 {exportState === 'success' ? 'bg-ok animate-success-pulse' : exportState === 'error' ? 'bg-danger animate-shake-x' : 'bg-ok/90 hover:bg-ok active:bg-ok'}"
 		onclick={handleExport}
 		disabled={exportState === 'exporting'}
 	>
@@ -184,7 +189,7 @@
 	{#if ondashboard}
 		<button
 			type="button"
-			class="w-full rounded-xl border border-border bg-surface-800 px-4 py-2.5 text-center text-sm text-gray-400 transition-colors hover:bg-surface-700 hover:text-white active:bg-surface-700 active:text-white"
+			class="w-full rounded-xl border border-border bg-surface-800 px-4 py-2.5 lg:py-3 text-center text-sm lg:text-base text-gray-400 transition-colors hover:bg-surface-700 hover:text-white active:bg-surface-700 active:text-white"
 			onclick={ondashboard}
 		>
 			חזרה לרשימת דוחות

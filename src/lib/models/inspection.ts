@@ -1,6 +1,7 @@
-export type ChecklistStatus = 'תקין' | 'לא תקין' | 'ל.ק.' | '*' | 'ללא';
+export type ChecklistStatus = string;
 
 export type InspectionMeta = {
+	siteGroup: string;
 	siteName: string;
 	inspectionDate: string; // ISO date
 	inspectorName: string;
@@ -62,8 +63,24 @@ export type Inspection = {
 	defects: Defect[];
 };
 
+/** In-app report name: "לקוח - אתר" */
+export function buildReportName(meta: InspectionMeta): string {
+	const parts = [meta.siteGroup, meta.siteName].filter(Boolean);
+	return parts.length > 0 ? parts.join(' - ') : 'בדיקה חדשה';
+}
+
+/** Export filename: "פרוטוקול בדיקה תקופתית - לקוח - אתר - תאריך.xlsx" */
+export function buildExportFilename(meta: InspectionMeta): string {
+	const parts = ['פרוטוקול בדיקה תקופתית'];
+	if (meta.siteGroup) parts.push(meta.siteGroup);
+	if (meta.siteName) parts.push(meta.siteName);
+	if (meta.inspectionDate) parts.push(meta.inspectionDate);
+	return `${parts.join(' - ')}.xlsx`;
+}
+
 export function createDefaultMeta(): InspectionMeta {
 	return {
+		siteGroup: '',
 		siteName: '',
 		inspectionDate: new Date().toISOString().split('T')[0],
 		inspectorName: '',

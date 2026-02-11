@@ -6,32 +6,22 @@
 
 	let { store }: { store: ReturnType<typeof createInspectionStore> } = $props();
 
-	let inverterCount = $state(3);
-
-	$effect(() => {
-		inverterCount = store.inspection.inverterConfigs.length || 3;
-	});
+	let inverterCount = $state(store.inspection.inverterConfigs.length);
 
 	function applyConfig() {
 		haptic('medium');
 		store.setInverterConfigs(inverterCount);
 	}
-
-	$effect(() => {
-		if (store.inspection.inverterConfigs.length === 0) {
-			applyConfig();
-		}
-	});
 </script>
 
 <div class="space-y-4">
 	<div class="space-y-1">
-		<h2 class="text-lg font-bold text-white">הגדרת מערכת</h2>
-		<p class="text-sm text-gray-400">הגדר את מספר הממירים באתר</p>
+		<h2 class="text-lg lg:text-xl font-bold text-white">הגדרת מערכת</h2>
+		<p class="text-sm lg:text-base text-gray-400">הגדר את מספר הממירים באתר</p>
 	</div>
 
 	<div>
-		<label for="inverterCount" class="mb-1.5 block text-sm font-medium text-gray-300"
+		<label for="inverterCount" class="mb-1.5 block text-sm lg:text-base font-medium text-gray-300"
 			>מספר ממירים</label
 		>
 		<input
@@ -39,14 +29,14 @@
 			type="number"
 			min="1"
 			max="50"
-			class="block w-full px-3 py-2"
+			class="block w-full lg:max-w-xs px-3 py-2"
 			bind:value={inverterCount}
 			onchange={applyConfig}
 		/>
 	</div>
 
 	{#if store.inspection.inverterConfigs.length > 0}
-		<div class="space-y-2">
+		<div class="space-y-2 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
 			{#each store.inspection.inverterConfigs as config (config.index)}
 				<div
 					class="flex items-center gap-3 rounded-xl border border-border bg-surface-800 p-3"

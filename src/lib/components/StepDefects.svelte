@@ -16,12 +16,12 @@
 <div class="space-y-4">
 	<div class="flex items-center justify-between">
 		<div>
-			<h2 class="text-lg font-bold text-white">ריכוז ליקויים</h2>
-			<p class="text-sm text-gray-400">תיעוד ליקויים שנמצאו בבדיקה</p>
+			<h2 class="text-lg lg:text-xl font-bold text-white">ריכוז ליקויים</h2>
+			<p class="text-sm lg:text-base text-gray-400">תיעוד ליקויים שנמצאו בבדיקה</p>
 		</div>
 		<button
 			type="button"
-			class="rounded-xl bg-accent px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover active:bg-accent/80"
+			class="rounded-xl bg-accent px-3.5 lg:px-5 py-2 lg:py-2.5 text-sm lg:text-base font-medium text-white transition-colors hover:bg-accent-hover active:bg-accent/80"
 			onclick={() => store.addDefect()}
 		>
 			+ הוסף ליקוי
@@ -88,9 +88,9 @@
 					</div>
 				</div>
 
-				<div class="space-y-3 p-3">
+				<div class="space-y-3 p-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
 					<div>
-						<label for="defect-component-{idx}" class="mb-1 block text-sm font-medium text-gray-300">רכיב</label>
+						<label for="defect-component-{idx}" class="mb-1 block text-sm lg:text-base font-medium text-gray-300">רכיב</label>
 						<select
 							id="defect-component-{idx}"
 							class="w-full border-none bg-surface-700 px-2.5 py-1.5 text-sm"
@@ -104,8 +104,8 @@
 						</select>
 					</div>
 
-					<div>
-						<label for="defect-fault-{idx}" class="mb-1 block text-sm font-medium text-gray-300">תיאור תקלה</label>
+					<div class="lg:col-span-2">
+						<label for="defect-fault-{idx}" class="mb-1 block text-sm lg:text-base font-medium text-gray-300">תיאור תקלה</label>
 						<textarea
 							id="defect-fault-{idx}"
 							class="w-full border-none bg-surface-700 px-2.5 py-1.5 text-sm"
@@ -117,7 +117,7 @@
 					</div>
 
 					<div>
-						<label for="defect-location-{idx}" class="mb-1 block text-sm font-medium text-gray-300">מיקום</label>
+						<label for="defect-location-{idx}" class="mb-1 block text-sm lg:text-base font-medium text-gray-300">מיקום</label>
 						<input
 							id="defect-location-{idx}"
 							type="text"
@@ -128,8 +128,8 @@
 						/>
 					</div>
 
-					<div>
-						<label for="defect-status-{idx}" class="mb-1 block text-sm font-medium text-gray-300">סטטוס / הערות</label>
+					<div class="lg:col-span-2">
+						<label for="defect-status-{idx}" class="mb-1 block text-sm lg:text-base font-medium text-gray-300">סטטוס / הערות</label>
 						<textarea
 							id="defect-status-{idx}"
 							class="w-full border-none bg-surface-700 px-2.5 py-1.5 text-sm"

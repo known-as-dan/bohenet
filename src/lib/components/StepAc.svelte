@@ -24,15 +24,15 @@
 
 <div class="space-y-4">
 	<div>
-		<h2 class="text-lg font-bold text-white">מדידות AC</h2>
-		<p class="text-sm text-gray-400">ערכי מתח, זרם ובדיקות AC</p>
+		<h2 class="text-lg lg:text-xl font-bold text-white">מדידות AC</h2>
+		<p class="text-sm lg:text-base text-gray-400">ערכי מתח, זרם ובדיקות AC</p>
 	</div>
 
 	{#each acSections as section, sIdx (section.code)}
 		<div class="overflow-hidden rounded-xl border border-border bg-surface-800">
 			<button
 				type="button"
-				class="flex w-full items-center justify-between p-3 text-start transition-colors hover:bg-surface-700 active:bg-surface-700"
+				class="flex w-full items-center justify-between p-3 lg:p-4 text-start transition-colors hover:bg-surface-700 active:bg-surface-700"
 				onclick={() => toggleSection(sIdx)}
 			>
 				<span class="font-semibold text-white">{section.title}</span>
@@ -47,13 +47,13 @@
 						)}
 						{#if measurement}
 							<div class="flex items-center gap-2 rounded-lg bg-surface-700/50 p-2">
-								<span class="min-w-0 flex-1 text-sm text-gray-300"
+								<span class="min-w-0 flex-1 text-sm lg:text-base text-gray-300"
 									>{item.description}</span
 								>
 								<input
 									type="text"
 									placeholder="תוצאה"
-								class="w-24 border-none bg-surface-700 px-2.5 py-1.5 text-center text-sm"
+								class="w-24 lg:w-32 border-none bg-surface-700 px-2.5 py-1.5 text-center text-sm"
 									value={measurement.result ?? ''}
 									oninput={(e) =>
 										store.updateAcMeasurement(
@@ -64,7 +64,7 @@
 								<input
 									type="text"
 									placeholder="הערות"
-								class="w-28 border-none bg-surface-700 px-2.5 py-1.5 text-center text-sm"
+								class="w-28 lg:w-36 border-none bg-surface-700 px-2.5 py-1.5 text-center text-sm"
 									value={measurement.notes ?? ''}
 									oninput={(e) =>
 										store.updateAcMeasurement(
@@ -85,7 +85,7 @@
 	<div class="overflow-hidden rounded-xl border border-border bg-surface-800">
 		<button
 			type="button"
-			class="flex w-full items-center justify-between p-3 text-start transition-colors hover:bg-surface-700"
+			class="flex w-full items-center justify-between p-3 lg:p-4 text-start transition-colors hover:bg-surface-700"
 			onclick={() => { haptic('light'); showSerials = !showSerials; }}
 		>
 			<div class="flex items-center gap-2">
@@ -96,7 +96,7 @@
 		</button>
 
 		{#if showSerials}
-			<div class="space-y-2 border-t border-border p-3" transition:slide={{ duration: 300 }}>
+			<div class="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0 border-t border-border p-3" transition:slide={{ duration: 300 }}>
 				{#each store.inspection.inverterSerials as serial (serial.inverterIndex)}
 					<div class="flex items-center gap-2 rounded-lg bg-surface-700/50 p-2">
 						<div
