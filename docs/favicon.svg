@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Simplified head-only version for favicon -->
+
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="#161822"/>
+
+  <!-- Head -->
+  <ellipse cx="32" cy="32" rx="16" ry="18" fill="#f0c8a8"/>
+
+  <!-- Hair -->
+  <path d="M16 28 Q14 14 24 9 Q32 5 40 9 Q50 14 48 28 Q46 18 40 12 Q34 8 32 8 Q30 8 24 12 Q18 18 16 28 Z" fill="#4a3728"/>
+  <!-- Bun -->
+  <ellipse cx="32" cy="9" rx="8" ry="6" fill="#4a3728"/>
+
+  <!-- Eyes -->
+  <ellipse cx="26" cy="30" rx="2.5" ry="2.8" fill="white"/>
+  <ellipse cx="38" cy="30" rx="2.5" ry="2.8" fill="white"/>
+  <circle cx="26.5" cy="30" r="1.5" fill="#3d2b1a"/>
+  <circle cx="38.5" cy="30" r="1.5" fill="#3d2b1a"/>
+
+  <!-- Karen glasses -->
+  <rect x="20" y="26" width="13" height="9" rx="2" fill="none" stroke="#6c8cff" stroke-width="2"/>
+  <rect x="35" y="26" width="13" height="9" rx="2" fill="none" stroke="#6c8cff" stroke-width="2"/>
+  <path d="M33 30 L35 30" stroke="#6c8cff" stroke-width="1.5"/>
+  <!-- Cat-eye flicks -->
+  <path d="M20 27 L17 24" stroke="#6c8cff" stroke-width="2" stroke-linecap="round"/>
+  <path d="M48 27 L51 24" stroke="#6c8cff" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Mouth -->
+  <path d="M28 39 Q32 42 36 39" fill="none" stroke="#c4847a" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Mini clipboard hint -->
+  <rect x="6" y="36" width="10" height="14" rx="1.5" fill="#6c8cff" opacity="0.8"/>
+  <line x1="8" y1="40" x2="14" y2="40" stroke="white" stroke-width="1" opacity="0.6"/>
+  <line x1="8" y1="43" x2="14" y2="43" stroke="white" stroke-width="1" opacity="0.6"/>
+  <line x1="8" y1="46" x2="12" y2="46" stroke="white" stroke-width="1" opacity="0.6"/>
+</svg>

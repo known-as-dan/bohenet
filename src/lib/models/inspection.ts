@@ -15,6 +15,8 @@ export type ChecklistItem = {
 };
 
 export type DcStringMeasurement = {
+	id: string;
+	parentId: string | null;
 	inverterIndex: number;
 	stringLabel: string;
 	panelCount?: number;

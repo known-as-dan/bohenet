@@ -41,19 +41,79 @@ function saveInspectorName(name: string) {
 	}
 }
 
+function createDcMeasurement(
+	inverterIndex: number,
+	stringLabel: string,
+	parentId: string | null = null
+): DcStringMeasurement {
+	return {
+		id: crypto.randomUUID(),
+		parentId,
+		inverterIndex,
+		stringLabel,
+		panelCount: undefined,
+		openCircuitVoltage: undefined,
+		operatingCurrent: undefined,
+		stringRiso: undefined,
+		feedRisoNegative: undefined,
+		feedRisoPositive: undefined
+	};
+}
+
 function generateDcMeasurements(configs: InverterConfig[]): DcStringMeasurement[] {
 	return configs.flatMap((inv) =>
-		Array.from({ length: inv.stringCount }, (_, i) => ({
-			inverterIndex: inv.index,
-			stringLabel: STRING_LABELS[i] || `S${i + 1}`,
-			panelCount: undefined,
-			openCircuitVoltage: undefined,
-			operatingCurrent: undefined,
-			stringRiso: undefined,
-			feedRisoNegative: undefined,
-			feedRisoPositive: undefined
-		}))
+		Array.from({ length: inv.stringCount }, (_, i) =>
+			createDcMeasurement(inv.index, STRING_LABELS[i] || `S${i + 1}`)
+		)
 	);
+}
+
+/** Return DC measurements for an inverter in depth-first tree order, each with its depth level */
+export function getOrderedDcTree(
+	measurements: DcStringMeasurement[],
+	inverterIndex: number
+): { measurement: DcStringMeasurement; depth: number }[] {
+	const forInverter = measurements.filter((m) => m.inverterIndex === inverterIndex);
+	const childrenOf = (parentId: string | null) =>
+		forInverter.filter((m) => m.parentId === parentId);
+
+	const result: { measurement: DcStringMeasurement; depth: number }[] = [];
+	function walk(parentId: string | null, depth: number) {
+		for (const m of childrenOf(parentId)) {
+			result.push({ measurement: m, depth });
+			walk(m.id, depth + 1);
+		}
+	}
+	walk(null, 0);
+	return result;
+}
+
+/** Get all descendant ids of a measurement (recursive) */
+function getDescendantIds(measurements: DcStringMeasurement[], parentId: string): string[] {
+	const ids: string[] = [];
+	for (const m of measurements) {
+		if (m.parentId === parentId) {
+			ids.push(m.id);
+			ids.push(...getDescendantIds(measurements, m.id));
+		}
+	}
+	return ids;
+}
+
+/** Find the next available child label for a parent */
+function nextChildLabel(measurements: DcStringMeasurement[], parentId: string, parentLabel: string): string {
+	const siblings = measurements.filter((m) => m.parentId === parentId);
+	return `${parentLabel}${siblings.length + 1}`;
+}
+
+/** Find the next available top-level label for an inverter */
+function nextTopLevelLabel(measurements: DcStringMeasurement[], inverterIndex: number): string {
+	const topLevel = measurements.filter((m) => m.inverterIndex === inverterIndex && m.parentId === null);
+	const usedLetters = new Set(topLevel.map((m) => m.stringLabel));
+	for (let i = 0; i < STRING_LABELS.length; i++) {
+		if (!usedLetters.has(STRING_LABELS[i])) return STRING_LABELS[i];
+	}
+	return `S${topLevel.length + 1}`;
 }
 
 function generateInverterSerials(configs: InverterConfig[]) {
@@ -79,6 +139,12 @@ export function createInspectionStore(report: SavedReport) {
 			}
 		}
 	}
+	// Migrate legacy DC measurements: backfill id/parentId
+	for (const m of currentReport.inspection.dcMeasurements) {
+		if (!m.id) m.id = crypto.randomUUID();
+		if (m.parentId === undefined) m.parentId = null;
+	}
+
 	if (currentReport.inspection.acMeasurements.length === 0) {
 		currentReport.inspection.acMeasurements = createAcMeasurementsFromTemplate();
 	} else {
@@ -168,18 +234,42 @@ export function createInspectionStore(report: SavedReport) {
 		save();
 	}
 
-	function updateDcMeasurement(
-		inverterIndex: number,
-		stringLabel: string,
-		updates: Partial<DcStringMeasurement>
-	) {
-		const m = currentReport.inspection.dcMeasurements.find(
-			(d) => d.inverterIndex === inverterIndex && d.stringLabel === stringLabel
-		);
+	function updateDcMeasurement(id: string, updates: Partial<DcStringMeasurement>) {
+		const m = currentReport.inspection.dcMeasurements.find((d) => d.id === id);
 		if (m) {
 			Object.assign(m, updates);
 			save();
 		}
+	}
+
+	function addDcString(inverterIndex: number) {
+		const label = nextTopLevelLabel(currentReport.inspection.dcMeasurements, inverterIndex);
+		currentReport.inspection.dcMeasurements.push(
+			createDcMeasurement(inverterIndex, label)
+		);
+		save();
+	}
+
+	function addDcSubstring(parentId: string) {
+		const parent = currentReport.inspection.dcMeasurements.find((m) => m.id === parentId);
+		if (!parent) return;
+		const label = nextChildLabel(
+			currentReport.inspection.dcMeasurements,
+			parentId,
+			parent.stringLabel
+		);
+		currentReport.inspection.dcMeasurements.push(
+			createDcMeasurement(parent.inverterIndex, label, parentId)
+		);
+		save();
+	}
+
+	function removeDcMeasurement(id: string) {
+		const idsToRemove = new Set([id, ...getDescendantIds(currentReport.inspection.dcMeasurements, id)]);
+		currentReport.inspection.dcMeasurements = currentReport.inspection.dcMeasurements.filter(
+			(m) => !idsToRemove.has(m.id)
+		);
+		save();
 	}
 
 	function updateAcMeasurement(itemCode: string, result?: string | number, notes?: string) {
@@ -282,6 +372,9 @@ export function createInspectionStore(report: SavedReport) {
 		updateChecklistItem,
 		markSectionAllOk,
 		updateDcMeasurement,
+		addDcString,
+		addDcSubstring,
+		removeDcMeasurement,
 		updateAcMeasurement,
 		updateInverterSerial,
 		addDefect,

@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import type { Defect, Inspection } from '../models/inspection.js';
+import { getOrderedDcTree } from '../stores/inspection.svelte.js';
 
 // ── Template-based Excel export ──────────────────────────────────
 // Fetches the official template from /template.xlsx, fills in
@@ -112,22 +113,13 @@ function fillDcSheet(ws: ExcelJS.Worksheet, inspection: Inspection): number {
 	// Data starts from row 2
 	let currentRow = 2;
 
-	const inverterGroups = new Map<number, typeof inspection.dcMeasurements>();
-	for (const m of inspection.dcMeasurements) {
-		if (!inverterGroups.has(m.inverterIndex)) {
-			inverterGroups.set(m.inverterIndex, []);
-		}
-		inverterGroups.get(m.inverterIndex)!.push(m);
-	}
-
 	for (const config of inspection.inverterConfigs) {
-		const measurements = inverterGroups.get(config.index) || [];
-
 		// Inverter header row
 		setCell(ws, currentRow, 1, config.index);
 		currentRow++;
 
-		for (const m of measurements) {
+		const tree = getOrderedDcTree(inspection.dcMeasurements, config.index);
+		for (const { measurement: m } of tree) {
 			setCell(ws, currentRow, 2, m.stringLabel);
 			if (m.panelCount !== undefined) setCell(ws, currentRow, 3, m.panelCount);
 			if (m.openCircuitVoltage !== undefined) setCell(ws, currentRow, 4, m.openCircuitVoltage);
