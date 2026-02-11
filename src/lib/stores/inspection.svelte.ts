@@ -157,18 +157,6 @@ export function createInspectionStore(report: SavedReport) {
 		}
 	}
 
-	let currentStep = $state(0);
-
-	const steps = [
-		'פרטי בדיקה',
-		'הגדרת מערכת',
-		'בדיקות חזותיות',
-		'מדידות DC',
-		'מדידות AC',
-		'ליקויים',
-		'סיכום וייצוא'
-	];
-
 	function save() {
 		saveReport(currentReport);
 		if (currentReport.inspection.meta.inspectorName) {
@@ -324,20 +312,6 @@ export function createInspectionStore(report: SavedReport) {
 		}
 	}
 
-	function goToStep(step: number) {
-		if (step >= 0 && step < steps.length) {
-			currentStep = step;
-		}
-	}
-
-	function nextStep() {
-		goToStep(currentStep + 1);
-	}
-
-	function prevStep() {
-		goToStep(currentStep - 1);
-	}
-
 	let autoDefects = $derived(
 		currentReport.inspection.checklist
 			.filter((c) => c.status === 'לא תקין')
@@ -362,12 +336,6 @@ export function createInspectionStore(report: SavedReport) {
 		get report() {
 			return currentReport;
 		},
-		get currentStep() {
-			return currentStep;
-		},
-		get steps() {
-			return steps;
-		},
 		get autoDefects() {
 			return autoDefects;
 		},
@@ -389,9 +357,6 @@ export function createInspectionStore(report: SavedReport) {
 		updateInverterSerial,
 		addDefect,
 		removeDefect,
-		duplicateDefect,
-		goToStep,
-		nextStep,
-		prevStep
+		duplicateDefect
 	};
 }

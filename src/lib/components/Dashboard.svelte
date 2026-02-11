@@ -5,6 +5,7 @@
 	import { downloadWorkbook } from '$lib/mappers/excel.js';
 	import { checklistSections } from '$lib/config/checklist.js';
 	import { browser } from '$app/environment';
+	import { goto } from '$app/navigation';
 	import {
 		listReports,
 		loadReport,
@@ -15,10 +16,8 @@
 		loadFolders,
 		saveFolders,
 		migrateOldData,
-		type ReportSummary,
-		type SavedReport
+		type ReportSummary
 	} from '$lib/stores/reports.js';
-	let { onopen }: { onopen: (report: SavedReport) => void } = $props();
 
 	// Migrate old data on first run
 	if (browser) {
@@ -43,13 +42,13 @@
 	function handleNew() {
 		haptic('medium');
 		const report = createNewReport(activeFolder || 'כללי');
-		onopen(report);
+		saveReport(report);
+		goto(`/report/${report.id}`);
 	}
 
 	function handleOpen(id: string) {
 		haptic('light');
-		const report = loadReport(id);
-		if (report) onopen(report);
+		goto(`/report/${id}`);
 	}
 
 	function handleDelete(id: string) {
