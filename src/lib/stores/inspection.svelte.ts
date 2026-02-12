@@ -1,4 +1,9 @@
-import { createChecklistFromTemplate, checklistSections, allowLKCodes, getItemConfig } from '../config/checklist.js';
+import {
+	createChecklistFromTemplate,
+	checklistSections,
+	allowLKCodes,
+	getItemConfig
+} from '../config/checklist.js';
 import { createAcMeasurementsFromTemplate } from '../config/ac.js';
 import {
 	buildReportName,
@@ -11,13 +16,13 @@ import type { SavedReport } from './reports.js';
 import { saveReport, safeSetItem } from './reports.js';
 
 /** Map a checklist sectionCode like "1.5" to its parent section title */
-function getSectionTitle(sectionCode: string): string {
+export function getSectionTitle(sectionCode: string): string {
 	const parentCode = sectionCode.split('.')[0];
 	return checklistSections.find((s) => s.code === parentCode)?.title ?? '';
 }
 
 /** Shorten a verbose checklist description into a compact fault label */
-function shortenFault(desc: string): string {
+export function shortenFault(desc: string): string {
 	// Strip leading imperative verbs
 	let s = desc
 		.replace(/^(ודא|וודא|בחן|בדוק|בצע|ציין|חזק|מדוד|השווה)\s+(את\s+|כי\s+|על\s+)?/i, '')
@@ -29,6 +34,20 @@ function shortenFault(desc: string): string {
 	if (s.length > 60) s = s.slice(0, 57) + '...';
 	// Capitalize first char (for Hebrew it's a no-op but just in case)
 	return s;
+}
+
+/** Build auto-generated defects from checklist items marked as faulty */
+export function buildAutoDefects(
+	checklist: import('../models/inspection.js').ChecklistItem[]
+): Defect[] {
+	return checklist
+		.filter((c) => c.status === 'לא תקין')
+		.map((c) => ({
+			component: getSectionTitle(c.sectionCode),
+			fault: shortenFault(c.description),
+			location: `סעיף ${c.sectionCode}`,
+			status: c.notes || ''
+		}));
 }
 
 /** crypto.randomUUID fallback for older iOS Safari / non-HTTPS */
@@ -108,14 +127,20 @@ function getDescendantIds(measurements: DcStringMeasurement[], parentId: string)
 }
 
 /** Find the next available child label for a parent */
-function nextChildLabel(measurements: DcStringMeasurement[], parentId: string, parentLabel: string): string {
+function nextChildLabel(
+	measurements: DcStringMeasurement[],
+	parentId: string,
+	parentLabel: string
+): string {
 	const siblings = measurements.filter((m) => m.parentId === parentId);
 	return `${parentLabel}.${siblings.length + 1}`;
 }
 
 /** Find the next available top-level label for an inverter */
 function nextTopLevelLabel(measurements: DcStringMeasurement[], inverterIndex: number): string {
-	const topLevel = measurements.filter((m) => m.inverterIndex === inverterIndex && m.parentId === null);
+	const topLevel = measurements.filter(
+		(m) => m.inverterIndex === inverterIndex && m.parentId === null
+	);
 	const usedLetters = new Set(topLevel.map((m) => m.stringLabel));
 	for (let i = 0; i < STRING_LABELS.length; i++) {
 		if (!usedLetters.has(STRING_LABELS[i])) return STRING_LABELS[i];
@@ -277,9 +302,7 @@ export function createInspectionStore(report: SavedReport) {
 
 	function addDcString(inverterIndex: number) {
 		const label = nextTopLevelLabel(currentReport.inspection.dcMeasurements, inverterIndex);
-		currentReport.inspection.dcMeasurements.push(
-			createDcMeasurement(inverterIndex, label)
-		);
+		currentReport.inspection.dcMeasurements.push(createDcMeasurement(inverterIndex, label));
 		save();
 	}
 
@@ -308,7 +331,10 @@ export function createInspectionStore(report: SavedReport) {
 	}
 
 	function removeDcMeasurement(id: string) {
-		const idsToRemove = new Set([id, ...getDescendantIds(currentReport.inspection.dcMeasurements, id)]);
+		const idsToRemove = new Set([
+			id,
+			...getDescendantIds(currentReport.inspection.dcMeasurements, id)
+		]);
 		currentReport.inspection.dcMeasurements = currentReport.inspection.dcMeasurements.filter(
 			(m) => !idsToRemove.has(m.id)
 		);
@@ -369,10 +395,7 @@ export function createInspectionStore(report: SavedReport) {
 			}))
 	);
 
-	let allDefects = $derived([
-		...autoDefects,
-		...currentReport.inspection.defects
-	]);
+	let allDefects = $derived([...autoDefects, ...currentReport.inspection.defects]);
 
 	return {
 		get inspection() {

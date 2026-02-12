@@ -65,7 +65,12 @@ function bakeTableStripes(
 }
 
 /** Set cell value, preserving the existing style */
-function setCell(ws: ExcelJS.Worksheet, row: number, col: number, value: string | number | undefined) {
+function setCell(
+	ws: ExcelJS.Worksheet,
+	row: number,
+	col: number,
+	value: string | number | undefined
+) {
 	if (value === undefined || value === '') return;
 	const cell = ws.getCell(row, col);
 	cell.value = value;
@@ -188,42 +193,6 @@ function fillDefectsSheet(ws: ExcelJS.Worksheet, defects: Defect[]) {
 
 // ── Public API ───────────────────────────────────────────────────
 
-/** Apply print-ready page setup to a worksheet */
-function applyPageSetup(
-	ws: ExcelJS.Worksheet,
-	opts: {
-		orientation?: 'portrait' | 'landscape';
-		fitToWidth?: number;
-		fitToHeight?: number;
-		printArea?: string;
-		printTitlesRow?: string;
-	} = {}
-) {
-	ws.pageSetup = {
-		...ws.pageSetup,
-		paperSize: 9, // A4
-		orientation: opts.orientation ?? 'portrait',
-		fitToPage: true,
-		fitToWidth: opts.fitToWidth ?? 1,
-		fitToHeight: opts.fitToHeight ?? 0, // 0 = as many pages as needed
-		horizontalCentered: true,
-		margins: {
-			left: 0.4,
-			right: 0.4,
-			top: 0.5,
-			bottom: 0.5,
-			header: 0.3,
-			footer: 0.3
-		},
-		...(opts.printArea ? { printArea: opts.printArea } : {}),
-		...(opts.printTitlesRow ? { printTitlesRow: opts.printTitlesRow } : {})
-	};
-
-	ws.headerFooter = {
-		oddFooter: '&Lינשוף&C&A&Rעמוד &P מתוך &N'
-	};
-}
-
 async function loadTemplate(): Promise<ExcelJS.Workbook> {
 	const response = await fetch('/template.xlsx');
 	if (!response.ok) {
@@ -242,18 +211,24 @@ export async function downloadWorkbook(inspection: Inspection, allDefects?: Defe
 	if (wsChecklist) {
 		const lastRow = fillChecklistSheet(wsChecklist, inspection);
 		bakeTableStripes(wsChecklist, 2, lastRow, 4);
+	} else {
+		console.warn(`Template missing sheet "${SHEET_CHECKLIST}"`);
 	}
 
 	const wsDc = wb.getWorksheet(SHEET_DC);
 	if (wsDc) {
 		const dcLastRow = fillDcSheet(wsDc, inspection);
 		bakeTableStripes(wsDc, 2, dcLastRow, 8);
+	} else {
+		console.warn(`Template missing sheet "${SHEET_DC}"`);
 	}
 
 	const wsAc = wb.getWorksheet(SHEET_AC);
 	if (wsAc) {
 		const lastRow = fillAcSheet(wsAc, inspection);
 		bakeTableStripes(wsAc, 2, lastRow, 4);
+	} else {
+		console.warn(`Template missing sheet "${SHEET_AC}"`);
 	}
 
 	const defects = allDefects ?? inspection.defects;
@@ -261,6 +236,8 @@ export async function downloadWorkbook(inspection: Inspection, allDefects?: Defe
 	if (wsDefects) {
 		fillDefectsSheet(wsDefects, defects);
 		bakeTableStripes(wsDefects, 2, Math.max(2, defects.length + 1), 4);
+	} else {
+		console.warn(`Template missing sheet "${SHEET_DEFECTS}"`);
 	}
 
 	// ExcelJS can't roundtrip Excel Table/AutoFilter objects — strip them
@@ -284,5 +261,5 @@ export async function downloadWorkbook(inspection: Inspection, allDefects?: Defe
 	a.href = url;
 	a.download = buildExportFilename(inspection.meta);
 	a.click();
-	URL.revokeObjectURL(url);
+	setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

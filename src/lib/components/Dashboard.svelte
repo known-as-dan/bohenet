@@ -4,7 +4,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { haptic } from '$lib/utils/haptics.js';
 	import { downloadWorkbook } from '$lib/mappers/excel.js';
-	import { checklistSections } from '$lib/config/checklist.js';
+	import { buildAutoDefects } from '$lib/stores/inspection.svelte.js';
 	import { browser } from '$app/environment';
 	import {
 		listReports,
@@ -77,20 +77,7 @@
 			const report = loadReport(id);
 			if (!report) return;
 			const inspection = report.inspection;
-			// Compute allDefects the same way the store does
-			const autoDefects = inspection.checklist
-				.filter((c) => c.status === 'לא תקין')
-				.map((c) => {
-					const parentCode = c.sectionCode.split('.')[0];
-					const component = checklistSections.find((s) => s.code === parentCode)?.title ?? '';
-					return {
-						component,
-						fault: c.description,
-						location: `סעיף ${c.sectionCode}`,
-						status: c.notes || ''
-					};
-				});
-			const allDefects = [...autoDefects, ...inspection.defects];
+			const allDefects = [...buildAutoDefects(inspection.checklist), ...inspection.defects];
 			await downloadWorkbook(inspection, allDefects);
 			haptic('success');
 		} catch (err) {
@@ -115,7 +102,12 @@
 	function handleDeleteFolder(folder: string) {
 		const folderReports = reports.filter((r) => r.folder === folder);
 		if (folderReports.length > 0) {
-			if (!confirm(`תיקייה "${folder}" מכילה ${folderReports.length} דוחות. הדוחות יועברו לתיקיית \"כללי\". להמשיך?`)) return;
+			if (
+				!confirm(
+					`תיקייה "${folder}" מכילה ${folderReports.length} דוחות. הדוחות יועברו לתיקיית \"כללי\". להמשיך?`
+				)
+			)
+				return;
 			for (const r of folderReports) {
 				const full = loadReport(r.id);
 				if (full) {
@@ -150,13 +142,13 @@
 	let allFolders = $derived([...new Set([...folders, ...reports.map((r) => r.folder)])]);
 </script>
 
-<div class="mx-auto max-w-lg lg:max-w-3xl px-4 lg:px-8 pb-24 pt-6">
+<div class="mx-auto max-w-lg px-4 pt-6 pb-24 lg:max-w-3xl lg:px-8">
 	<!-- Header -->
 	<div class="mb-4 flex items-center gap-3">
 		<img src="/logo.png" alt="ינשוף" class="h-14 w-14" />
 		<div>
-			<h1 class="text-3xl lg:text-4xl font-bold text-white">ינשוף</h1>
-			<p class="text-sm lg:text-base text-gray-500">בדיקות תקופתיות PV</p>
+			<h1 class="text-3xl font-bold text-white lg:text-4xl">ינשוף</h1>
+			<p class="text-sm text-gray-500 lg:text-base">בדיקות תקופתיות PV</p>
 		</div>
 	</div>
 
@@ -165,7 +157,10 @@
 		<div class="mb-2 flex flex-wrap gap-1.5">
 			<button
 				type="button"
-				class="rounded-lg px-3.5 lg:px-4 py-1.5 lg:py-2 text-sm lg:text-base font-medium transition-colors {activeFolder === null ? 'bg-accent text-white' : 'bg-surface-800 text-gray-400 hover:bg-surface-700 hover:text-gray-300 active:bg-surface-700'}"
+				class="rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors lg:px-4 lg:py-2 lg:text-base {activeFolder ===
+				null
+					? 'bg-accent text-white'
+					: 'bg-surface-800 text-gray-400 hover:bg-surface-700 hover:text-gray-300 active:bg-surface-700'}"
 				onclick={() => (activeFolder = null)}
 			>
 				הכל ({reports.length})
@@ -176,11 +171,23 @@
 				{@const isDefault = folder === 'כללי'}
 				<button
 					type="button"
-					class="flex items-center gap-1.5 rounded-lg px-3.5 lg:px-4 py-1.5 lg:py-2 text-sm lg:text-base font-medium transition-colors {isActive ? 'bg-accent text-white' : 'bg-surface-800 text-gray-400 hover:bg-surface-700 hover:text-gray-300 active:bg-surface-700'}"
+					class="flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors lg:px-4 lg:py-2 lg:text-base {isActive
+						? 'bg-accent text-white'
+						: 'bg-surface-800 text-gray-400 hover:bg-surface-700 hover:text-gray-300 active:bg-surface-700'}"
 					onclick={() => (activeFolder = isActive ? null : folder)}
 				>
-					<svg class="h-3.5 w-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+					<svg
+						class="h-3.5 w-3.5 opacity-60"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+						/>
 					</svg>
 					{folder} ({count})
 					{#if isActive && !isDefault}
@@ -189,8 +196,16 @@
 							tabindex="0"
 							class="-me-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white/60 transition-colors hover:bg-white/20 hover:text-white"
 							title="מחק תיקייה"
-							onclick={(e) => { e.stopPropagation(); handleDeleteFolder(folder); }}
-							onkeydown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); handleDeleteFolder(folder); } }}
+							onclick={(e) => {
+								e.stopPropagation();
+								handleDeleteFolder(folder);
+							}}
+							onkeydown={(e) => {
+								if (e.key === 'Enter') {
+									e.stopPropagation();
+									handleDeleteFolder(folder);
+								}
+							}}
 						>
 							&times;
 						</span>
@@ -198,7 +213,10 @@
 				</button>
 			{/each}
 			{#if showNewFolder}
-				<div class="inline-flex items-center rounded-lg bg-surface-700 ring-1 ring-accent/50" transition:fly={{ x: -8, duration: 200, easing: cubicOut }}>
+				<div
+					class="inline-flex items-center rounded-lg bg-surface-700 ring-1 ring-accent/50"
+					transition:fly={{ x: -8, duration: 200, easing: cubicOut }}
+				>
 					<!-- svelte-ignore a11y_autofocus -->
 					<input
 						type="text"
@@ -208,15 +226,23 @@
 						bind:value={newFolderName}
 						onkeydown={(e) => {
 							if (e.key === 'Enter') handleAddFolder();
-							if (e.key === 'Escape') { showNewFolder = false; newFolderName = ''; }
+							if (e.key === 'Escape') {
+								showNewFolder = false;
+								newFolderName = '';
+							}
 						}}
-						onblur={() => { if (!newFolderName.trim()) { showNewFolder = false; newFolderName = ''; } }}
+						onblur={() => {
+							if (!newFolderName.trim()) {
+								showNewFolder = false;
+								newFolderName = '';
+							}
+						}}
 					/>
 				</div>
 			{:else}
 				<button
 					type="button"
-					class="rounded-lg px-3.5 lg:px-4 py-1.5 lg:py-2 text-sm lg:text-base text-gray-500 transition-colors hover:bg-surface-700 hover:text-gray-400 active:bg-surface-700"
+					class="rounded-lg px-3.5 py-1.5 text-sm text-gray-500 transition-colors hover:bg-surface-700 hover:text-gray-400 active:bg-surface-700 lg:px-4 lg:py-2 lg:text-base"
 					onclick={() => (showNewFolder = true)}
 				>
 					+ תיקייה
@@ -230,12 +256,50 @@
 		<div class="py-16 text-center" in:fade={{ duration: 400 }}>
 			<svg class="mx-auto mb-4 h-20 w-20 text-surface-500" viewBox="0 0 80 80" fill="none">
 				<!-- Dashed clipboard outline -->
-				<rect x="16" y="12" width="48" height="58" rx="6" stroke="currentColor" stroke-width="2" stroke-dasharray="5 3" opacity="0.5" />
+				<rect
+					x="16"
+					y="12"
+					width="48"
+					height="58"
+					rx="6"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-dasharray="5 3"
+					opacity="0.5"
+				/>
 				<!-- Clip -->
-				<rect x="28" y="7" width="24" height="10" rx="3" stroke="currentColor" stroke-width="2" stroke-dasharray="4 3" opacity="0.5" />
+				<rect
+					x="28"
+					y="7"
+					width="24"
+					height="10"
+					rx="3"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-dasharray="4 3"
+					opacity="0.5"
+				/>
 				<!-- Plus sign -->
-				<line x1="40" y1="32" x2="40" y2="56" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.4" />
-				<line x1="28" y1="44" x2="52" y2="44" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.4" />
+				<line
+					x1="40"
+					y1="32"
+					x2="40"
+					y2="56"
+					stroke="currentColor"
+					stroke-width="2.5"
+					stroke-linecap="round"
+					opacity="0.4"
+				/>
+				<line
+					x1="28"
+					y1="44"
+					x2="52"
+					y2="44"
+					stroke="currentColor"
+					stroke-width="2.5"
+					stroke-linecap="round"
+					opacity="0.4"
+				/>
 			</svg>
 			<p class="text-gray-400">
 				{activeFolder ? 'אין דוחות בתיקייה זו' : 'אין דוחות עדיין'}
@@ -263,48 +327,108 @@
 						<div class="flex gap-0.5">
 							<button
 								type="button"
-								class="rounded-lg p-1.5 lg:p-2.5 text-gray-500 transition-colors hover:bg-ok-dim hover:text-ok active:bg-ok-dim active:text-ok disabled:opacity-40"
+								class="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-ok-dim hover:text-ok active:bg-ok-dim active:text-ok disabled:opacity-40 lg:p-2.5"
 								title="ייצוא לאקסל"
 								disabled={exportingId === report.id}
-								onclick={(e) => { e.stopPropagation(); handleExport(report.id); }}
+								onclick={(e) => {
+									e.stopPropagation();
+									handleExport(report.id);
+								}}
 							>
 								{#if exportingId === report.id}
 									<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-										<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+										<circle
+											class="opacity-25"
+											cx="12"
+											cy="12"
+											r="10"
+											stroke="currentColor"
+											stroke-width="4"
+										></circle>
+										<path
+											class="opacity-75"
+											fill="currentColor"
+											d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+										></path>
 									</svg>
 								{:else}
-									<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-										<path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+									<svg
+										class="h-4 w-4"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+										/>
 									</svg>
 								{/if}
 							</button>
 							<button
 								type="button"
-								class="rounded-lg p-1.5 lg:p-2.5 text-gray-500 transition-colors hover:bg-surface-600 hover:text-gray-300 active:bg-surface-600 active:text-gray-300"
+								class="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-surface-600 hover:text-gray-300 active:bg-surface-600 active:text-gray-300 lg:p-2.5"
 								title="שכפל"
-								onclick={(e) => { e.stopPropagation(); handleDuplicate(report.id); }}
+								onclick={(e) => {
+									e.stopPropagation();
+									handleDuplicate(report.id);
+								}}
 							>
-								<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-									<path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+								<svg
+									class="h-4 w-4"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+									/>
 								</svg>
 							</button>
 							<button
 								type="button"
-								class="rounded-lg p-1.5 lg:p-2.5 text-gray-500 transition-colors hover:bg-danger-dim hover:text-danger active:bg-danger-dim active:text-danger"
+								class="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-danger-dim hover:text-danger active:bg-danger-dim active:text-danger lg:p-2.5"
 								title="מחק"
-								onclick={(e) => { e.stopPropagation(); handleDelete(report.id); }}
+								onclick={(e) => {
+									e.stopPropagation();
+									handleDelete(report.id);
+								}}
 							>
-								<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-									<path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+								<svg
+									class="h-4 w-4"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+									/>
 								</svg>
 							</button>
 						</div>
 					</div>
 					<div class="flex items-center justify-between text-xs text-gray-500">
 						<span class="flex items-center gap-1">
-							<svg class="h-3 w-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+							<svg
+								class="h-3 w-3 opacity-50"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+								/>
 							</svg>
 							{report.folder}
 						</span>
@@ -316,10 +440,12 @@
 	{/if}
 
 	<!-- Fixed bottom New Report Button -->
-	<div class="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-lg lg:max-w-3xl px-4 lg:px-8 pb-12 pt-3 bg-gradient-to-t from-[#0f1117] from-60% to-transparent">
+	<div
+		class="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-lg bg-gradient-to-t from-[#0f1117] from-60% to-transparent px-4 pt-3 pb-12 lg:max-w-3xl lg:px-8"
+	>
 		<button
 			type="button"
-			class="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 lg:py-4 text-base lg:text-lg font-semibold text-white shadow-lg shadow-accent/20 transition-all hover:bg-accent-hover hover:shadow-xl hover:shadow-accent/30 active:scale-[0.98]"
+			class="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-accent/20 transition-all hover:bg-accent-hover hover:shadow-xl hover:shadow-accent/30 active:scale-[0.98] lg:py-4 lg:text-lg"
 			onclick={handleNew}
 		>
 			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
